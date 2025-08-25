@@ -41,57 +41,59 @@ func (i *Implementation) Authorize(ctx context.Context, authorizePayload *pb.Aut
 
 	merchantWallet, err := fetchWallet(tx, authorizePayload.MerchantWalletUserId)
 	if err != nil {
-		err := tx.Rollback()
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return nil, status.Error(codes.Internal, rollbackErr.Error())
 		}
 		return nil, err
 	}
 
 	customerWallet, err := fetchWallet(tx, authorizePayload.CustomerWalletUserId)
 	if err != nil {
-		err := tx.Rollback()
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return nil, status.Error(codes.Internal, rollbackErr.Error())
 		}
 		return nil, err
 	}
 
 	srcAccount, err := fetchAccount(tx, customerWallet.ID, "DEFAULT")
 	if err != nil {
-		err := tx.Rollback()
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return nil, status.Error(codes.Internal, rollbackErr.Error())
 		}
 		return nil, err
 	}
 
 	dstAccount, err := fetchAccount(tx, merchantWallet.ID, "PAYMENT")
 	if err != nil {
-		err := tx.Rollback()
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return nil, status.Error(codes.Internal, rollbackErr.Error())
 		}
 		return nil, err
 	}
 
 	err = transfer(tx, srcAccount, dstAccount, authorizePayload.Cents)
 	if err != nil {
-		err := tx.Rollback()
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return nil, status.Error(codes.Internal, rollbackErr.Error())
 		}
 		return nil, err
 	}
 
-	pid, err := createTransaction(tx, srcAccount, dstAccount, merchantWallet, authorizePayload.Cents)
+	pid := uuid.New().String()
+	err = createTransaction(tx, pid, srcAccount, dstAccount, customerWallet, customerWallet, merchantWallet, authorizePayload.Cents)
 	if err != nil {
-		err := tx.Rollback()
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return nil, status.Error(codes.Internal, rollbackErr.Error())
 		}
 		return nil, err
 	}
+
 	// End transaction
 	err = tx.Commit()
 	if err != nil {
@@ -110,53 +112,63 @@ func (i *Implementation) Capture(ctx context.Context, capturePayload *pb.Capture
 
 	authorizeTransaction, err := fetchTransaction(tx, capturePayload.Pid)
 	if err != nil {
-		err := tx.Rollback()
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return nil, status.Error(codes.Internal, rollbackErr.Error())
 		}
 		return nil, err
 	}
 
 	srcAccount, err := fetchAccount(tx, authorizeTransaction.dstAccountWalletID, "PAYMENT")
 	if err != nil {
-		err := tx.Rollback()
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return nil, status.Error(codes.Internal, rollbackErr.Error())
 		}
 		return nil, err
 	}
 
 	dstMerchantAccount, err := fetchAccount(tx, authorizeTransaction.finalDstMerchantWalletID, "INCOMING")
 	if err != nil {
-		err := tx.Rollback()
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return nil, status.Error(codes.Internal, rollbackErr.Error())
 		}
 		return nil, err
 	}
 
 	err = transfer(tx, srcAccount, dstMerchantAccount, authorizeTransaction.amount)
 	if err != nil {
-		err := tx.Rollback()
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-		return nil, err
-	}
-	merchantWallet, err := fetchWallet(tx, authorizeTransaction.dstUserID)
-	if err != nil {
-		err := tx.Rollback()
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return nil, status.Error(codes.Internal, rollbackErr.Error())
 		}
 		return nil, err
 	}
 
-	_, err = createTransaction(tx, srcAccount, dstMerchantAccount, merchantWallet, authorizeTransaction.amount)
+	customerWallet, err := fetchWallet(tx, authorizeTransaction.srcUserID)
 	if err != nil {
-		err := tx.Rollback()
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return nil, status.Error(codes.Internal, rollbackErr.Error())
+		}
+		return nil, err
+	}
+
+	merchantWallet, err := fetchWalletWithWalletID(tx, authorizeTransaction.finalDstMerchantWalletID)
+	if err != nil {
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return nil, status.Error(codes.Internal, rollbackErr.Error())
+		}
+		return nil, err
+	}
+
+	err = createTransaction(tx, authorizeTransaction.pid, srcAccount, dstMerchantAccount, customerWallet, merchantWallet, merchantWallet, authorizeTransaction.amount)
+	if err != nil {
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return nil, status.Error(codes.Internal, rollbackErr.Error())
 		}
 		return nil, err
 	}
@@ -164,9 +176,9 @@ func (i *Implementation) Capture(ctx context.Context, capturePayload *pb.Capture
 	// Commit tx
 	err = tx.Commit()
 	if err != nil {
-		err := tx.Rollback()
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return nil, status.Error(codes.Internal, rollbackErr.Error())
 		}
 		return nil, err
 	}
@@ -186,6 +198,26 @@ func fetchWallet(tx *sql.Tx, userID string) (wallet, error) {
 	defer stmt.Close()
 
 	err = stmt.QueryRow(userID).Scan(&w.ID, &w.userID, &w.walletType)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return w, status.Error(codes.InvalidArgument, err.Error())
+		}
+		return w, status.Error(codes.Internal, err.Error())
+	}
+
+	return w, nil
+}
+
+func fetchWalletWithWalletID(tx *sql.Tx, walletID int32) (wallet, error) {
+	var w wallet
+
+	stmt, err := tx.Prepare("SELECT id, user_id, wallet_type FROM wallet WHERE id = ?")
+	if err != nil {
+		return w, status.Error(codes.Internal, err.Error())
+	}
+	defer stmt.Close()
+
+	err = stmt.QueryRow(walletID).Scan(&w.ID, &w.userID, &w.walletType)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return w, status.Error(codes.InvalidArgument, err.Error())
@@ -250,21 +282,20 @@ func transfer(tx *sql.Tx, srcAccount account, dstAccount account, amount int64) 
 	return nil
 }
 
-func createTransaction(tx *sql.Tx, srcAccount account, dstAccount account, merchantWallet wallet, amount int64) (string, error) {
-	pid := uuid.New().String()
+func createTransaction(tx *sql.Tx, pid string, srcAccount account, dstAccount account, srcWallet wallet, dstWallet wallet, finalDstWallet wallet, amount int64) error {
 
 	stmt, err := tx.Prepare(insertTransactionQuery)
 	if err != nil {
-		return "", status.Error(codes.Internal, err.Error())
+		return status.Error(codes.Internal, err.Error())
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(pid, srcAccount.walletID, dstAccount.walletID, srcAccount.ID, dstAccount.ID, srcAccount.accountType, dstAccount.accountType, merchantWallet.ID, amount)
+	_, err = stmt.Exec(pid, srcWallet.userID, dstWallet.userID, srcWallet.ID, dstWallet.ID, srcAccount.ID, dstAccount.ID, srcAccount.accountType, dstAccount.accountType, finalDstWallet.ID, amount)
 	if err != nil {
-		return "", status.Error(codes.Internal, err.Error())
+		return status.Error(codes.Internal, err.Error())
 	}
 
-	return pid, nil
+	return nil
 }
 
 func fetchTransaction(tx *sql.Tx, pid string) (transaction, error) {
@@ -285,4 +316,32 @@ func fetchTransaction(tx *sql.Tx, pid string) (transaction, error) {
 	}
 
 	return t, nil
+}
+
+type wallet struct {
+	ID         int32
+	userID     string
+	walletType string
+}
+
+type account struct {
+	ID          int32
+	cents       int64
+	accountType string
+	walletID    int32
+}
+
+type transaction struct {
+	ID                       int32
+	pid                      string
+	srcUserID                string
+	dstUserID                string
+	srcAccountWalletID       int32
+	dstAccountWalletID       int32
+	srcAccountID             int32
+	dstAccountID             int32
+	srcAccountType           string
+	dstAccountType           string
+	finalDstMerchantWalletID int32
+	amount                   int64
 }
