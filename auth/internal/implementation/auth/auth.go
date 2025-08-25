@@ -1,0 +1,104 @@
+package auth
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"log"
+	"os"
+	"time"
+
+	pb "github.com/andreistefanciprian/gomicropay/auth/proto"
+	jwt "github.com/golang-jwt/jwt/v5"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+)
+
+type Implementation struct {
+	db *sql.DB
+	pb.UnimplementedAuthServiceServer
+}
+
+func NewAuthImplementation(db *sql.DB) *Implementation {
+	return &Implementation{
+		db: db,
+	}
+}
+
+func (i *Implementation) GetToken(ctx context.Context, credentials *pb.Credentials) (*pb.Token, error) {
+	type user struct {
+		userID   string
+		password string
+	}
+
+	var u user
+
+	stmt, err := i.db.Prepare("SELECT user_id, password FROM `user` WHERE user_id = ? AND password = ?")
+	if err != nil {
+		log.Println(err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	defer stmt.Close()
+
+	err = stmt.QueryRow(credentials.GetUserName(), credentials.GetPassword()).Scan(&u.userID, &u.password)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, status.Error(codes.Unauthenticated, "invalid credentials")
+		}
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	jwToken, err := createJWT(u.userID)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.Token{Jwt: jwToken}, nil
+}
+
+func (i *Implementation) ValidateToken(ctx context.Context, token *pb.Token) (*pb.User, error) {
+	key := []byte(os.Getenv("SIGNING_KEY"))
+	userID, err := validateJWT(token.Jwt, key)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.User{UserId: userID}, nil
+}
+
+func validateJWT(tokenString string, signingKey []byte) (string, error) {
+	// parse token
+	type MyClaims struct {
+		jwt.RegisteredClaims
+	}
+	parsedToken, err := jwt.ParseWithClaims(tokenString, &MyClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return signingKey, nil
+	})
+	if err != nil {
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return "", status.Error(codes.Unauthenticated, "token expired")
+		} else {
+			return "", status.Error(codes.Unauthenticated, "unauthenticated")
+		}
+	}
+	claims, ok := parsedToken.Claims.(*MyClaims)
+	if !ok {
+		return "", status.Error(codes.Internal, "invalid token claims")
+	}
+	return claims.Subject, nil
+}
+
+func createJWT(userID string) (string, error) {
+	key := []byte(os.Getenv("SIGNING_KEY"))
+	claims := jwt.MapClaims{
+		"iss": "auth-service",
+		"sub": userID,
+		"iat": time.Now().Unix(),
+		"exp": time.Now().Add(time.Hour * 24).Unix(),
+		// You can add more claims here, like expiration, etc.
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	signedToken, err := token.SignedString(key)
+	if err != nil {
+		return "", status.Error(codes.Internal, err.Error())
+	}
+	return signedToken, nil
+}
