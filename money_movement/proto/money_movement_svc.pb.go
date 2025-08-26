@@ -25,7 +25,7 @@ const (
 type AuthorizePayload struct {
 	state                protoimpl.MessageState `protogen:"open.v1"`
 	CustomerWalletUserId string                 `protobuf:"bytes,1,opt,name=customerWalletUserId,proto3" json:"customerWalletUserId,omitempty"`
-	MerchantWalletUserId int64                  `protobuf:"varint,2,opt,name=merchantWalletUserId,proto3" json:"merchantWalletUserId,omitempty"`
+	MerchantWalletUserId string                 `protobuf:"bytes,2,opt,name=merchantWalletUserId,proto3" json:"merchantWalletUserId,omitempty"`
 	Cents                int64                  `protobuf:"varint,3,opt,name=cents,proto3" json:"cents,omitempty"`
 	Currency             string                 `protobuf:"bytes,4,opt,name=currency,proto3" json:"currency,omitempty"`
 	unknownFields        protoimpl.UnknownFields
@@ -69,11 +69,11 @@ func (x *AuthorizePayload) GetCustomerWalletUserId() string {
 	return ""
 }
 
-func (x *AuthorizePayload) GetMerchantWalletUserId() int64 {
+func (x *AuthorizePayload) GetMerchantWalletUserId() string {
 	if x != nil {
 		return x.MerchantWalletUserId
 	}
-	return 0
+	return ""
 }
 
 func (x *AuthorizePayload) GetCents() int64 {
@@ -185,7 +185,7 @@ const file_proto_money_movement_svc_proto_rawDesc = "" +
 	"\x1eproto/money_movement_svc.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xac\x01\n" +
 	"\x10AuthorizePayload\x122\n" +
 	"\x14customerWalletUserId\x18\x01 \x01(\tR\x14customerWalletUserId\x122\n" +
-	"\x14merchantWalletUserId\x18\x02 \x01(\x03R\x14merchantWalletUserId\x12\x14\n" +
+	"\x14merchantWalletUserId\x18\x02 \x01(\tR\x14merchantWalletUserId\x12\x14\n" +
 	"\x05cents\x18\x03 \x01(\x03R\x05cents\x12\x1a\n" +
 	"\bcurrency\x18\x04 \x01(\tR\bcurrency\"\"\n" +
 	"\x0eCapturePayload\x12\x10\n" +
