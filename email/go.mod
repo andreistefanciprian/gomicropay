@@ -1,11 +1,10 @@
-module github.com/andreistefanciprian/gomicropay/money_movement
+module github.com/andreistefanciprian/gomicropay
 
 go 1.24.0
 
-require google.golang.org/grpc v1.75.0
+require github.com/IBM/sarama v1.46.0
 
 require (
-	github.com/IBM/sarama v1.46.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/eapache/go-resiliency v1.7.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20230731223053-c322873962e3 // indirect
@@ -22,8 +21,4 @@ require (
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9 // indirect
 	golang.org/x/crypto v0.41.0 // indirect
 	golang.org/x/net v0.43.0 // indirect
-	golang.org/x/sys v0.35.0 // indirect
-	golang.org/x/text v0.28.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250707201910-8d1bb00bc6a7 // indirect
-	google.golang.org/protobuf v1.36.6 // indirect
 )
