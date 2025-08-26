@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/andreistefanciprian/gomicropay/money_movement/proto/pb";
+
+service MoneyMovementService {
+    rpc Authorize(AuthorizePayload) returns (AuthorizeResponse);
+    rpc Capture(CapturePayload) returns (google.protobuf.Empty);
+}
+
+message AuthorizePayload {
+    string customerWalletUserId = 1;
+    string merchantWalletUserId = 2;
+    int64 cents = 3;
+    string currency = 4;
+}
+
+message CapturePayload {
+    string pid = 1;
+}
+
+message AuthorizeResponse {
+    string pid = 1;
+}
+
