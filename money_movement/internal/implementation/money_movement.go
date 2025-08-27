@@ -76,7 +76,7 @@ func (i *Implementation) Authorize(ctx context.Context, authorizePayload *pb.Aut
 		return nil, err
 	}
 
-	dstAccount, err := fetchAccount(tx, merchantWallet.ID, "PAYMENT")
+	dstAccount, err := fetchAccount(tx, customerWallet.ID, "PAYMENT")
 	if err != nil {
 		fmt.Printf("Authorize failed: could not fetch dst account: %v\n", err)
 		rollbackErr := tx.Rollback()
