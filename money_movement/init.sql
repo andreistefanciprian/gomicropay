@@ -40,11 +40,11 @@ CREATE TABLE `transaction` (
 -- merchant and customer wallets
 INSERT INTO wallet (id, user_id, wallet_type) VALUES
 (1, 'cip@email.com', 'CUSTOMER'),
-(2, 'merchant@email.com', 'MERCHANT');
+(2, 'merchant_id', 'MERCHANT');
 
 -- customer accounts
 INSERT INTO account (cents, account_type, wallet_id) VALUES
-(5000000, 'CUSTOMER', 1),
+(5000000, 'DEFAULT', 1),
 (0, 'PAYMENT', 1);
 
 -- merchant accounts
