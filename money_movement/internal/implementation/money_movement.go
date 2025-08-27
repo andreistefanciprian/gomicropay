@@ -3,6 +3,7 @@ package mm
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/andreistefanciprian/gomicropay/money_movement/internal/producer"
 	pb "github.com/andreistefanciprian/gomicropay/money_movement/proto"
@@ -29,20 +30,25 @@ func NewMoneyMovementImplementation(db *sql.DB) *Implementation {
 }
 
 func (i *Implementation) Authorize(ctx context.Context, authorizePayload *pb.AuthorizePayload) (*pb.AuthorizeResponse, error) {
+	fmt.Printf("Authorize called with payload: %+v\n", authorizePayload)
 
 	if authorizePayload.GetCurrency() != "USD" {
+		fmt.Println("Authorize failed: only accepts USD")
 		return nil, status.Error(codes.InvalidArgument, "only accepts USD")
 	}
 	// Begin transaction
 	tx, err := i.db.Begin()
 	if err != nil {
+		fmt.Printf("Authorize failed: could not begin transaction: %v\n", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	merchantWallet, err := fetchWallet(tx, authorizePayload.MerchantWalletUserId)
 	if err != nil {
+		fmt.Printf("Authorize failed: could not fetch merchant wallet: %v\n", err)
 		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
+			fmt.Printf("Authorize failed: could not rollback after merchant wallet error: %v\n", rollbackErr)
 			return nil, status.Error(codes.Internal, rollbackErr.Error())
 		}
 		return nil, err
@@ -50,8 +56,10 @@ func (i *Implementation) Authorize(ctx context.Context, authorizePayload *pb.Aut
 
 	customerWallet, err := fetchWallet(tx, authorizePayload.CustomerWalletUserId)
 	if err != nil {
+		fmt.Printf("Authorize failed: could not fetch customer wallet: %v\n", err)
 		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
+			fmt.Printf("Authorize failed: could not rollback after customer wallet error: %v\n", rollbackErr)
 			return nil, status.Error(codes.Internal, rollbackErr.Error())
 		}
 		return nil, err
@@ -59,8 +67,10 @@ func (i *Implementation) Authorize(ctx context.Context, authorizePayload *pb.Aut
 
 	srcAccount, err := fetchAccount(tx, customerWallet.ID, "DEFAULT")
 	if err != nil {
+		fmt.Printf("Authorize failed: could not fetch src account: %v\n", err)
 		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
+			fmt.Printf("Authorize failed: could not rollback after src account error: %v\n", rollbackErr)
 			return nil, status.Error(codes.Internal, rollbackErr.Error())
 		}
 		return nil, err
@@ -68,27 +78,35 @@ func (i *Implementation) Authorize(ctx context.Context, authorizePayload *pb.Aut
 
 	dstAccount, err := fetchAccount(tx, merchantWallet.ID, "PAYMENT")
 	if err != nil {
+		fmt.Printf("Authorize failed: could not fetch dst account: %v\n", err)
 		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
+			fmt.Printf("Authorize failed: could not rollback after dst account error: %v\n", rollbackErr)
 			return nil, status.Error(codes.Internal, rollbackErr.Error())
 		}
 		return nil, err
 	}
 
+	fmt.Printf("Authorize: transferring %d cents from srcAccount %d to dstAccount %d\n", authorizePayload.Cents, srcAccount.ID, dstAccount.ID)
 	err = transfer(tx, srcAccount, dstAccount, authorizePayload.Cents)
 	if err != nil {
+		fmt.Printf("Authorize failed: transfer error: %v\n", err)
 		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
+			fmt.Printf("Authorize failed: could not rollback after transfer error: %v\n", rollbackErr)
 			return nil, status.Error(codes.Internal, rollbackErr.Error())
 		}
 		return nil, err
 	}
 
 	pid := uuid.New().String()
+	fmt.Printf("Authorize: creating transaction with pid %s\n", pid)
 	err = createTransaction(tx, pid, srcAccount, dstAccount, customerWallet, customerWallet, merchantWallet, authorizePayload.Cents)
 	if err != nil {
+		fmt.Printf("Authorize failed: createTransaction error: %v\n", err)
 		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
+			fmt.Printf("Authorize failed: could not rollback after createTransaction error: %v\n", rollbackErr)
 			return nil, status.Error(codes.Internal, rollbackErr.Error())
 		}
 		return nil, err
@@ -97,9 +115,11 @@ func (i *Implementation) Authorize(ctx context.Context, authorizePayload *pb.Aut
 	// End transaction
 	err = tx.Commit()
 	if err != nil {
+		fmt.Printf("Authorize failed: commit error: %v\n", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	fmt.Printf("Authorize succeeded: pid=%s\n", pid)
 	return &pb.AuthorizeResponse{Pid: pid}, nil
 }
 
