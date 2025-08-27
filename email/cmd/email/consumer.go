@@ -1,8 +1,9 @@
-package email
+package main
 
 import (
 	"encoding/json"
 	"log"
+	"os"
 	"sync"
 
 	"github.com/IBM/sarama"
@@ -19,8 +20,11 @@ type EmailMsg struct {
 }
 
 func main() {
+
+	sarama.Logger = log.New(os.Stdout, "[sarama]", log.LstdFlags)
+
 	done := make(chan struct{})
-	consumer, err := sarama.NewConsumer([]string{"localhost:9092"}, sarama.NewConfig())
+	consumer, err := sarama.NewConsumer([]string{"my-cluster-kafka-bootstrap:9092"}, sarama.NewConfig())
 	if err != nil {
 		log.Fatal("Error creating consumer:", err)
 	}
@@ -31,7 +35,7 @@ func main() {
 		}
 	}()
 
-	partitions, err := consumer.partitions(topic)
+	partitions, err := consumer.Partitions(topic)
 	if err != nil {
 		log.Fatal(err)
 	}

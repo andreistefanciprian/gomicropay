@@ -1,4 +1,4 @@
-module github.com/andreistefanciprian/gomicropay
+module github.com/andreistefanciprian/gomicropay/email
 
 go 1.24.0
 
