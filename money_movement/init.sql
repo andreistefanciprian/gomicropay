@@ -1,10 +1,8 @@
+CREATE USER 'money_movement_user'@'%' IDENTIFIED BY 'Auth123';
 
-DROP USER IF EXISTS 'money_movement_user'@'localhost';
-CREATE USER 'money_movement_user'@'localhost' IDENTIFIED BY 'Auth123';
-
-DROP DATABASE IF EXISTS money_movement;
 CREATE DATABASE money_movement;
-GRANT ALL PRIVILEGES ON money_movement.* TO 'money_movement_user'@'localhost';
+
+GRANT ALL PRIVILEGES ON money_movement.* TO 'money_movement_user'@'%';
 
 USE money_movement;
 
@@ -25,7 +23,7 @@ CREATE TABLE `account` (
 
 CREATE TABLE `transaction` (
     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    pid VARCHAR,
+    pid VARCHAR(255) NOT NULL,
     src_user_id VARCHAR(255) NOT NULL,
     dst_user_id VARCHAR(255) NOT NULL,
     src_wallet_id INT NOT NULL,

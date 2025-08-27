@@ -29,7 +29,7 @@ type LedgerMsg struct {
 
 func SendCaptureMessage(pid, userID string, amount int64) {
 	// Create a sync Producer
-	producer, err := sarama.NewSyncProducer([]string{"localhost:9092"}, sarama.NewConfig())
+	producer, err := sarama.NewSyncProducer([]string{"kafka:9092"}, sarama.NewConfig())
 	if err != nil {
 		log.Println("Error creating producer:", err)
 		return

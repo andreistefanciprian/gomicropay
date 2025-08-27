@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-auth
+  labels:
+    app: mysql-auth
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-auth
+  template:
+    metadata:
+      labels:
+        app: mysql-auth
+    spec:
+      containers:
+        - name: mysql-auth
+          image: mysql:5.7
+          envFrom:
+            - secretRef:
+                name: mysql-auth-secret
+            - configMapRef:
+                name: mysql-auth-configmap
+          volumeMounts:
+            - name: init-sql
+              mountPath: /docker-entrypoint-initdb.d
+          securityContext:
+            privileged: true
+          ports:
+            - containerPort: 3306
+      volumes:
+        - name: init-sql
+          configMap:
+            name: mysql-init-sql
+            items:
+              - key: init.sql
+                path: init.sql

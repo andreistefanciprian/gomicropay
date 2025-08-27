@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-ledger
+  labels:
+    app: mysql-ledger
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-ledger
+  template:
+    metadata:
+      labels:
+        app: mysql-ledger
+    spec:
+      containers:
+        - name: mysql-ledger
+          image: mysql:5.7
+          envFrom:
+            - secretRef:
+                name: mysql-ledger-secret
+            - configMapRef:
+                name: mysql-ledger-configmap
+          volumeMounts:
+            - name: init-sql
+              mountPath: /docker-entrypoint-initdb.d
+          securityContext:
+            privileged: true
+          ports:
+            - containerPort: 3306
+      volumes:
+        - name: init-sql
+          configMap:
+            name: mysql-init-sql
+            items:
+              - key: init.sql
+                path: init.sql

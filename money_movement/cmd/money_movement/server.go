@@ -5,17 +5,16 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 
 	mm "github.com/andreistefanciprian/gomicropay/money_movement/internal/implementation"
 	pb "github.com/andreistefanciprian/gomicropay/money_movement/proto"
+	_ "github.com/go-sql-driver/mysql"
 	"google.golang.org/grpc"
 )
 
 const (
-	dbDriver   = "mysql"
-	dbUser     = "root"
-	dbPassword = "Admin123"
-	dbName     = "money_movement"
+	dbDriver = "mysql"
 )
 
 var db *sql.DB
@@ -23,7 +22,12 @@ var db *sql.DB
 func main() {
 
 	var err error
-	dsn := fmt.Sprintf("%s:%s@tcp(localhost:3306)/%s", dbUser, dbPassword, dbName)
+
+	dbUser := os.Getenv("MYSQL_USER")
+	dbPassword := os.Getenv("MYSQL_PASSWORD")
+	dbName := os.Getenv("MYSQL_DB")
+
+	dsn := fmt.Sprintf("%s:%s@tcp(mysql-money-movement:3306)/%s", dbUser, dbPassword, dbName)
 	db, err = sql.Open(dbDriver, dsn)
 	if err != nil {
 		log.Fatal(err)
