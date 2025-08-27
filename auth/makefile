@@ -13,4 +13,7 @@ docker-push:
 	@docker push andreistefanciprian/gomicropay-auth:latest
 
 deploy:
-	@kubectl apply -f manifests/.
+	@kubectl apply -f manifests/. -n kafka
+
+undeploy:
+	@kubectl delete -f manifests/. -n kafka
