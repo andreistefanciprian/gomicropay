@@ -32,7 +32,7 @@ spec:
       volumes:
         - name: init-sql
           configMap:
-            name: mysql-init-sql
+            name: mysql-auth-init-sql
             items:
               - key: init.sql
                 path: init.sql
