@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	authpb "github.com/andreistefanciprian/gomicropay/api_gateway/auth"
@@ -19,7 +21,10 @@ var authClient authpb.AuthServiceClient
 
 func main() {
 	// auth connection
-	authConn, err := grpc.Dial("auth:9000", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	authHost := os.Getenv("AUTH_HOST")
+	authPort := os.Getenv("AUTH_PORT")
+	authAddress := fmt.Sprintf("%s:%s", authHost, authPort)
+	authConn, err := grpc.Dial(authAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -32,7 +37,10 @@ func main() {
 	authClient = authpb.NewAuthServiceClient(authConn)
 
 	// money movement connection
-	mmConn, err := grpc.Dial("money_movement:7000", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	moneyMovementHost := os.Getenv("MONEY_MOVEMENT_HOST")
+	moneyMovementPort := os.Getenv("MONEY_MOVEMENT_PORT")
+	moneyMovementAddress := fmt.Sprintf("%s:%s", moneyMovementHost, moneyMovementPort)
+	mmConn, err := grpc.Dial(moneyMovementAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -47,6 +55,11 @@ func main() {
 	http.HandleFunc("/customer/payment/authorize", customerPaymentAuthorize)
 	http.HandleFunc("/customer/payment/capture", customerPaymentCapture)
 
+	log.Println("API Gateway listening on port 8080")
+	err = http.ListenAndServe(":8080", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func login(w http.ResponseWriter, r *http.Request) {
