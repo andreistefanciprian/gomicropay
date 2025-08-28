@@ -3,7 +3,6 @@ package producer
 import (
 	"encoding/json"
 	"log"
-	"os"
 	"sync"
 	"time"
 
@@ -28,24 +27,7 @@ type LedgerMsg struct {
 	Date      string `json:"date"`
 }
 
-func SendCaptureMessage(pid, userID string, amount int64) {
-
-	sarama.Logger = log.New(os.Stdout, "[sarama]", log.LstdFlags)
-
-	// Create a sync Producer
-	config := sarama.NewConfig()
-	config.Producer.Return.Successes = true
-	producer, err := sarama.NewSyncProducer([]string{"my-cluster-kafka-bootstrap:9092"}, config)
-	if err != nil {
-		log.Println("Error creating producer:", err)
-		return
-	}
-	defer func() {
-		if err := producer.Close(); err != nil {
-			log.Println("Error closing producer:", err)
-		}
-	}()
-
+func SendCaptureMessage(producer sarama.SyncProducer, pid, userID string, amount int64) {
 	// Create email message
 	emailMsg := EmailMsg{
 		OrderID: pid,

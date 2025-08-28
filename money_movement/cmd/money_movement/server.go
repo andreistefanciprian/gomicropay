@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 
+	"github.com/IBM/sarama"
 	mm "github.com/andreistefanciprian/gomicropay/money_movement/internal/implementation"
 	pb "github.com/andreistefanciprian/gomicropay/money_movement/proto"
 	_ "github.com/go-sql-driver/mysql"
@@ -49,13 +50,34 @@ func main() {
 		log.Println("Database connection established")
 	}
 
+	// Kafka producer setup
+	saramaLogger := log.New(os.Stdout, "[money-movement producer]", log.LstdFlags)
+	sarama.Logger = saramaLogger
+	kafkaHost := os.Getenv("KAFKA_HOST")
+	kafkaPort := os.Getenv("KAFKA_PORT")
+	brokerAddr := fmt.Sprintf("%s:%s", kafkaHost, kafkaPort)
+	config := sarama.NewConfig()
+	config.Producer.Return.Successes = true
+	producer, err := sarama.NewSyncProducer([]string{brokerAddr}, config)
+	if err != nil {
+		log.Fatalf("Error creating Kafka producer: %v", err)
+	}
+	defer func() {
+		if err := producer.Close(); err != nil {
+			log.Println("Error closing Kafka producer:", err)
+		}
+	}()
+
 	// gRPC server setup
 	grpcServer := grpc.NewServer()
-	pb.RegisterMoneyMovementServiceServer(grpcServer, mm.NewMoneyMovementImplementation(db))
+	pb.RegisterMoneyMovementServiceServer(grpcServer, mm.NewMoneyMovementImplementation(db, producer))
 	// listen and serve
 	listener, err := net.Listen("tcp", ":7000")
+	if err != nil {
+		log.Fatalf("Failed to listen: %v", err)
+	}
+	log.Printf("gRPC server listening at %v", listener.Addr())
 	if err := grpcServer.Serve(listener); err != nil {
 		log.Fatalf("Failed to serve gRPC server: %v", err)
 	}
-	log.Printf("gRPC server listening at %v", listener.Addr())
 }
