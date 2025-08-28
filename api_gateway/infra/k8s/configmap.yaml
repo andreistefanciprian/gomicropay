@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: gateway-configmap
 data:
-  MONEY_MOVEMENT_HOST: "money-movement.kafka.svc.cluster.local"
+  MONEY_MOVEMENT_HOST: "money-movement.money-movement.svc.cluster.local"
   MONEY_MOVEMENT_PORT: "7000"
   AUTH_HOST: "auth.kafka.svc.cluster.local"
   AUTH_PORT: "9000"

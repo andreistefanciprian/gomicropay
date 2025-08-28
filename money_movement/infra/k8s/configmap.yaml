@@ -3,6 +3,6 @@ kind: ConfigMap
 metadata:
   name: money-movement-configmap
 data:
-  KAFKA_HOST: "my-cluster-kafka-bootstrap"
+  KAFKA_HOST: "my-cluster-kafka-bootstrap.kafka.svc.cluster.local"
   KAFKA_PORT: "9092"
   LOG_LEVEL: "DEBUG" 

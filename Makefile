@@ -15,9 +15,9 @@ docker-gateway:
 	@docker build -t andreistefanciprian/gomicropay-gateway:latest -f api_gateway/infra/Dockerfile api_gateway/
 	@docker push andreistefanciprian/gomicropay-gateway:latest
 deploy-gateway:
-	@kustomize build api_gateway/infra/k8s | kubectl apply -n api-gateway -f -
+	@kustomize build api_gateway/infra/k8s | kubectl apply -f -
 undeploy-gateway:
-	@kustomize build api_gateway/infra/k8s | kubectl delete -n api-gateway -f -
+	@kustomize build api_gateway/infra/k8s | kubectl delete -f -
 
 # auth
 docker-auth:
@@ -30,12 +30,12 @@ undeploy-auth:
 
 # money_movement
 docker-money-movement:
-	@docker build -t andreistefanciprian/gomicropay-money-movement:latest -f money_movement/Dockerfile money_movement/
+	@docker build -t andreistefanciprian/gomicropay-money-movement:latest -f money_movement/infra/Dockerfile money_movement/
 	@docker push andreistefanciprian/gomicropay-money-movement:latest
 deploy-money-movement:
-	@kubectl apply -f money_movement/manifests/. -n kafka
+	@kustomize build money_movement/infra/k8s | kubectl apply -f -
 undeploy-money-movement:
-	@kubectl delete -f money_movement/manifests/. -n kafka
+	@kustomize build money_movement/infra/k8s | kubectl delete -f -
 
 # email
 docker-email:
