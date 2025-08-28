@@ -31,7 +31,11 @@ mysql>select * from transaction;
 kubectl logs -l app=gateway -n api-gateway -f
 kubectl logs -l app=money-movement -n money-movement -f
 kubectl logs -l app=ledger -n ledger -f
+kubectl logs -l app=auth -n auth -f
 
 # generate transaction
 bash test_transaction.sh
+
+# Remove all services
+make undeploy-all
 ```
