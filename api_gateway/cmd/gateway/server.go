@@ -19,11 +19,36 @@ import (
 var mmClient mmpb.MoneyMovementServiceClient
 var authClient authpb.AuthServiceClient
 
+var logLevel string
+
+func logDebug(format string, v ...interface{}) {
+	if logLevel == "DEBUG" {
+		log.Printf("[DEBUG] "+format, v...)
+	}
+}
+
+func logInfo(format string, v ...interface{}) {
+	if logLevel == "INFO" || logLevel == "DEBUG" {
+		log.Printf("[INFO] "+format, v...)
+	}
+}
+
 func main() {
-	// auth connection
+
 	authHost := os.Getenv("AUTH_HOST")
 	authPort := os.Getenv("AUTH_PORT")
+	moneyMovementHost := os.Getenv("MONEY_MOVEMENT_HOST")
+	moneyMovementPort := os.Getenv("MONEY_MOVEMENT_PORT")
+	moneyMovementAddress := fmt.Sprintf("%s:%s", moneyMovementHost, moneyMovementPort)
 	authAddress := fmt.Sprintf("%s:%s", authHost, authPort)
+
+	logLevel = os.Getenv("LOG_LEVEL")
+	if logLevel == "" {
+		logLevel = "INFO"
+	}
+	logInfo("Starting API Gateway with log level: %s", logLevel)
+
+	// auth connection
 	authConn, err := grpc.NewClient(authAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatal(err)
@@ -37,9 +62,6 @@ func main() {
 	authClient = authpb.NewAuthServiceClient(authConn)
 
 	// money movement connection
-	moneyMovementHost := os.Getenv("MONEY_MOVEMENT_HOST")
-	moneyMovementPort := os.Getenv("MONEY_MOVEMENT_PORT")
-	moneyMovementAddress := fmt.Sprintf("%s:%s", moneyMovementHost, moneyMovementPort)
 	log.Printf("Connecting to Money Movement service at %s", moneyMovementAddress)
 	mmConn, err := grpc.NewClient(moneyMovementAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -67,8 +89,11 @@ func main() {
 }
 
 func login(w http.ResponseWriter, r *http.Request) {
+	logInfo("login handler called")
 	username, password, ok := r.BasicAuth()
+	logDebug("BasicAuth username: %s", username)
 	if !ok {
+		logInfo("BasicAuth failed: missing or invalid credentials")
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
@@ -79,12 +104,14 @@ func login(w http.ResponseWriter, r *http.Request) {
 		Password: password,
 	})
 	if err != nil {
+		logInfo("GetToken failed: %v", err)
 		_, writeErr := w.Write([]byte(err.Error()))
 		if writeErr != nil {
 			log.Println(writeErr)
 		}
 		return
 	}
+	logDebug("Token generated for user %s: %s", username, token.Jwt)
 	_, err = w.Write([]byte(token.Jwt))
 	if err != nil {
 		log.Println("Failed to write token:", err)
@@ -92,27 +119,27 @@ func login(w http.ResponseWriter, r *http.Request) {
 }
 
 func customerPaymentAuthorize(w http.ResponseWriter, r *http.Request) {
-	log.Println("customerPaymentAuthorize called")
+	logInfo("customerPaymentAuthorize called")
 	authHeader := r.Header.Get("Authorization")
-	log.Printf("Authorization header: %s", authHeader)
+	logDebug("Authorization header: %s", authHeader)
 	if authHeader == "" {
-		log.Println("Missing Authorization header")
+		logInfo("Missing Authorization header")
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
 
 	if !strings.HasPrefix(authHeader, "Bearer ") {
-		log.Println("Authorization header does not start with 'Bearer '")
+		logInfo("Authorization header does not start with 'Bearer '")
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
 
 	token := strings.TrimPrefix(authHeader, "Bearer ")
-	log.Printf("Extracted token: %s", token)
+	logDebug("Extracted token: %s", token)
 	ctx := context.Background()
 	_, err := authClient.ValidateToken(ctx, &authpb.Token{Jwt: token})
 	if err != nil {
-		log.Printf("Token validation failed: %v", err)
+		logInfo("Token validation failed: %v", err)
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
@@ -133,15 +160,15 @@ func customerPaymentAuthorize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("Request body: %s", string(body))
+	logDebug("Request body: %s", string(body))
 	err = json.Unmarshal(body, &payload)
 	if err != nil {
-		log.Printf("Failed to unmarshal payload: %v", err)
+		logInfo("Failed to unmarshal payload: %v", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("Authorize payload: %+v", payload)
+	logDebug("Authorize payload: %+v", payload)
 	ctx = context.Background()
 	authorizedResponse, err := mmClient.Authorize(ctx, &mmpb.AuthorizePayload{
 		CustomerWalletUserId: payload.CustomerWalletUserId,
@@ -150,7 +177,7 @@ func customerPaymentAuthorize(w http.ResponseWriter, r *http.Request) {
 		Currency:             payload.Currency,
 	})
 	if err != nil {
-		log.Printf("Money movement authorization failed: %v", err)
+		logInfo("Money movement authorization failed: %v", err)
 		_, writeErr := w.Write([]byte(err.Error()))
 		if writeErr != nil {
 			log.Println(writeErr)
@@ -167,7 +194,7 @@ func customerPaymentAuthorize(w http.ResponseWriter, r *http.Request) {
 	}
 	responseJSON, err := json.Marshal(resp)
 	if err != nil {
-		log.Printf("Failed to marshal response: %v", err)
+		logInfo("Failed to marshal response: %v", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
@@ -175,26 +202,32 @@ func customerPaymentAuthorize(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(responseJSON)
 	if err != nil {
-		log.Println("Failed to write response:", err)
+		logInfo("Failed to write response: %v", err)
 	}
 }
 
 func customerPaymentCapture(w http.ResponseWriter, r *http.Request) {
+	logInfo("customerPaymentCapture handler called")
 	authHeader := r.Header.Get("Authorization")
+	logDebug("Authorization header: %s", authHeader)
 	if authHeader == "" {
+		logInfo("Missing Authorization header")
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
 
 	if !strings.HasPrefix(authHeader, "Bearer ") {
+		logInfo("Authorization header does not start with 'Bearer '")
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
 
 	token := strings.TrimPrefix(authHeader, "Bearer ")
+	logDebug("Extracted token: %s", token)
 	ctx := context.Background()
 	_, err := authClient.ValidateToken(ctx, &authpb.Token{Jwt: token})
 	if err != nil {
+		logInfo("Token validation failed: %v", err)
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
@@ -207,24 +240,30 @@ func customerPaymentCapture(w http.ResponseWriter, r *http.Request) {
 	var payload capturePayload
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
+		logInfo("Failed to read request body: %v", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
+	logDebug("Request body: %s", string(body))
 	err = json.Unmarshal(body, &payload)
 	if err != nil {
+		logInfo("Failed to unmarshal payload: %v", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
+	logDebug("Capture payload: %+v", payload)
 	ctx = context.Background()
 	_, err = mmClient.Capture(ctx, &mmpb.CapturePayload{Pid: payload.Pid})
 	if err != nil {
+		logInfo("Money movement capture failed: %v", err)
 		_, writeErr := w.Write([]byte(err.Error()))
 		if writeErr != nil {
 			log.Println(writeErr)
 		}
 		return
 	}
+	logInfo("Capture succeeded")
 	w.WriteHeader(http.StatusOK)
 }

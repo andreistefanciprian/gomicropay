@@ -7,3 +7,4 @@ data:
   MONEY_MOVEMENT_PORT: "7000"
   AUTH_HOST: "auth"
   AUTH_PORT: "9000"
+  LOG_LEVEL: "DEBUG"
