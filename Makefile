@@ -3,12 +3,10 @@
 deploy-mysql:
 	@kubectl apply -f mysql_auth/manifests/. -n kafka
 	@kubectl apply -f mysql_ledger/manifests/. -n kafka
-	@kubectl apply -f mysql_money_movement/manifests/. -n kafka
 
 undeploy-mysql:
 	@kubectl delete -f mysql_auth/manifests/. -n kafka
 	@kubectl delete -f mysql_ledger/manifests/. -n kafka
-	@kubectl delete -f mysql_money_movement/manifests/. -n kafka
 
 # api_gateway
 docker-gateway: 
@@ -54,7 +52,6 @@ deploy-ledger:
 	@kubectl apply -f ledger/manifests/. -n kafka
 undeploy-ledger:
 	@kubectl delete -f ledger/manifests/. -n kafka
-
 
 # all
 deploy-all: deploy-mysql deploy-auth deploy-email deploy-money-movement deploy-gateway deploy-ledger

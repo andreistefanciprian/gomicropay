@@ -7,4 +7,5 @@ resources:
   - configmap.yaml
   - secret.yaml
   - service.yaml
+  - mysql
 # Add other manifest files in this folder below
