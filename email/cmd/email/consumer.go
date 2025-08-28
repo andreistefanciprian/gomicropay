@@ -12,6 +12,20 @@ import (
 
 const topic = "email"
 
+var logLevel string
+
+func logDebug(format string, v ...interface{}) {
+	if logLevel == "DEBUG" {
+		log.Printf("[DEBUG] "+format, v...)
+	}
+}
+
+func logInfo(format string, v ...interface{}) {
+	if logLevel == "INFO" || logLevel == "DEBUG" {
+		log.Printf("[INFO] "+format, v...)
+	}
+}
+
 var wg sync.WaitGroup
 
 type EmailMsg struct {
@@ -20,11 +34,20 @@ type EmailMsg struct {
 }
 
 func main() {
+	logLevel = os.Getenv("LOG_LEVEL")
+	if logLevel == "" {
+		logLevel = "INFO"
+	}
+	logInfo("Starting email consumer with log level: %s", logLevel)
 
-	sarama.Logger = log.New(os.Stdout, "[sarama]", log.LstdFlags)
+	kafkaHost := os.Getenv("KAFKA_HOST")
+	kafkaPort := os.Getenv("KAFKA_PORT")
+	kafkaAddr := kafkaHost + ":" + kafkaPort
+
+	sarama.Logger = log.New(os.Stdout, "[email-consumer]", log.LstdFlags)
 
 	done := make(chan struct{})
-	consumer, err := sarama.NewConsumer([]string{"my-cluster-kafka-bootstrap:9092"}, sarama.NewConfig())
+	consumer, err := sarama.NewConsumer([]string{kafkaAddr}, sarama.NewConfig())
 	if err != nil {
 		log.Fatal("Error creating consumer:", err)
 	}
@@ -41,6 +64,7 @@ func main() {
 	}
 
 	for _, partition := range partitions {
+		logInfo("Starting consumer for partition %d", partition)
 		partitionConsumer, err := consumer.ConsumePartition(topic, partition, sarama.OffsetNewest)
 		if err != nil {
 			log.Fatal("Error creating partition consumer:", err)
@@ -56,7 +80,6 @@ func main() {
 	}
 
 	wg.Wait()
-	// close(done)
 }
 
 func awaitMessages(partitionConsumer sarama.PartitionConsumer, partition int32, done chan struct{}) {
@@ -64,10 +87,11 @@ func awaitMessages(partitionConsumer sarama.PartitionConsumer, partition int32, 
 	for {
 		select {
 		case msg := <-partitionConsumer.Messages():
-			log.Printf("Partition %d: Received message: %s\n", partition, string(msg.Value))
+			logInfo("Partition %d: Received message", partition)
+			logDebug("Partition %d: Message body: %s", partition, string(msg.Value))
 			handleMessage(msg)
 		case <-done:
-			log.Printf("Received Done signal.Partition %d: Shutting down consumer\n", partition)
+			logInfo("Received Done signal. Partition %d: Shutting down consumer", partition)
 			return
 		}
 	}
@@ -76,12 +100,14 @@ func awaitMessages(partitionConsumer sarama.PartitionConsumer, partition int32, 
 func handleMessage(msg *sarama.ConsumerMessage) {
 	var emailMsg EmailMsg
 	if err := json.Unmarshal(msg.Value, &emailMsg); err != nil {
-		log.Println("Error unmarshalling message:", err)
+		logInfo("Error unmarshalling message: %v", err)
 		return
 	}
+	logDebug("EmailMsg unmarshalled: %+v", emailMsg)
 	err := email.Send(emailMsg.UserID, emailMsg.OrderID)
 	if err != nil {
-		log.Println("Error sending email:", err)
+		logInfo("Error sending email: %v", err)
 		return
 	}
+	logInfo("Email sent to user %s for order %s", emailMsg.UserID, emailMsg.OrderID)
 }
