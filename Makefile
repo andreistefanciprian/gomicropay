@@ -9,6 +9,12 @@ undeploy-gateway:
 	@kustomize build api_gateway/infra/k8s | kubectl delete -f -
 
 # auth
+proto-auth:
+	@protoc \
+	--go_out=paths=source_relative:. \
+	--go-grpc_out=paths=source_relative:. \
+	./auth/proto/auth_svc.proto
+
 docker-auth:
 	@docker build -t andreistefanciprian/gomicropay-auth:latest -f auth/infra/Dockerfile auth/
 	@docker push andreistefanciprian/gomicropay-auth:latest

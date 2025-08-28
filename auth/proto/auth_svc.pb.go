@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.8
 // 	protoc        v4.23.4
-// source: proto/auth_svc.proto
+// source: auth/proto/auth_svc.proto
 
 package pb
 
@@ -30,7 +30,7 @@ type Token struct {
 
 func (x *Token) Reset() {
 	*x = Token{}
-	mi := &file_proto_auth_svc_proto_msgTypes[0]
+	mi := &file_auth_proto_auth_svc_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -42,7 +42,7 @@ func (x *Token) String() string {
 func (*Token) ProtoMessage() {}
 
 func (x *Token) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_auth_svc_proto_msgTypes[0]
+	mi := &file_auth_proto_auth_svc_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -55,7 +55,7 @@ func (x *Token) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Token.ProtoReflect.Descriptor instead.
 func (*Token) Descriptor() ([]byte, []int) {
-	return file_proto_auth_svc_proto_rawDescGZIP(), []int{0}
+	return file_auth_proto_auth_svc_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *Token) GetJwt() string {
@@ -75,7 +75,7 @@ type Credentials struct {
 
 func (x *Credentials) Reset() {
 	*x = Credentials{}
-	mi := &file_proto_auth_svc_proto_msgTypes[1]
+	mi := &file_auth_proto_auth_svc_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -87,7 +87,7 @@ func (x *Credentials) String() string {
 func (*Credentials) ProtoMessage() {}
 
 func (x *Credentials) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_auth_svc_proto_msgTypes[1]
+	mi := &file_auth_proto_auth_svc_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -100,7 +100,7 @@ func (x *Credentials) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Credentials.ProtoReflect.Descriptor instead.
 func (*Credentials) Descriptor() ([]byte, []int) {
-	return file_proto_auth_svc_proto_rawDescGZIP(), []int{1}
+	return file_auth_proto_auth_svc_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *Credentials) GetUserName() string {
@@ -126,7 +126,7 @@ type User struct {
 
 func (x *User) Reset() {
 	*x = User{}
-	mi := &file_proto_auth_svc_proto_msgTypes[2]
+	mi := &file_auth_proto_auth_svc_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -138,7 +138,7 @@ func (x *User) String() string {
 func (*User) ProtoMessage() {}
 
 func (x *User) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_auth_svc_proto_msgTypes[2]
+	mi := &file_auth_proto_auth_svc_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -151,7 +151,7 @@ func (x *User) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use User.ProtoReflect.Descriptor instead.
 func (*User) Descriptor() ([]byte, []int) {
-	return file_proto_auth_svc_proto_rawDescGZIP(), []int{2}
+	return file_auth_proto_auth_svc_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *User) GetUserId() string {
@@ -161,11 +161,11 @@ func (x *User) GetUserId() string {
 	return ""
 }
 
-var File_proto_auth_svc_proto protoreflect.FileDescriptor
+var File_auth_proto_auth_svc_proto protoreflect.FileDescriptor
 
-const file_proto_auth_svc_proto_rawDesc = "" +
+const file_auth_proto_auth_svc_proto_rawDesc = "" +
 	"\n" +
-	"\x14proto/auth_svc.proto\"\x19\n" +
+	"\x19auth/proto/auth_svc.proto\"\x19\n" +
 	"\x05Token\x12\x10\n" +
 	"\x03jwt\x18\x01 \x01(\tR\x03jwt\"E\n" +
 	"\vCredentials\x12\x1a\n" +
@@ -178,24 +178,24 @@ const file_proto_auth_svc_proto_rawDesc = "" +
 	"\rValidateToken\x12\x06.Token\x1a\x05.User\"\x00B9Z7github.com/andreistefanciprian/gomicropay/auth/proto/pbb\x06proto3"
 
 var (
-	file_proto_auth_svc_proto_rawDescOnce sync.Once
-	file_proto_auth_svc_proto_rawDescData []byte
+	file_auth_proto_auth_svc_proto_rawDescOnce sync.Once
+	file_auth_proto_auth_svc_proto_rawDescData []byte
 )
 
-func file_proto_auth_svc_proto_rawDescGZIP() []byte {
-	file_proto_auth_svc_proto_rawDescOnce.Do(func() {
-		file_proto_auth_svc_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_proto_auth_svc_proto_rawDesc), len(file_proto_auth_svc_proto_rawDesc)))
+func file_auth_proto_auth_svc_proto_rawDescGZIP() []byte {
+	file_auth_proto_auth_svc_proto_rawDescOnce.Do(func() {
+		file_auth_proto_auth_svc_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_auth_proto_auth_svc_proto_rawDesc), len(file_auth_proto_auth_svc_proto_rawDesc)))
 	})
-	return file_proto_auth_svc_proto_rawDescData
+	return file_auth_proto_auth_svc_proto_rawDescData
 }
 
-var file_proto_auth_svc_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
-var file_proto_auth_svc_proto_goTypes = []any{
+var file_auth_proto_auth_svc_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_auth_proto_auth_svc_proto_goTypes = []any{
 	(*Token)(nil),       // 0: Token
 	(*Credentials)(nil), // 1: Credentials
 	(*User)(nil),        // 2: User
 }
-var file_proto_auth_svc_proto_depIdxs = []int32{
+var file_auth_proto_auth_svc_proto_depIdxs = []int32{
 	1, // 0: AuthService.GetToken:input_type -> Credentials
 	0, // 1: AuthService.ValidateToken:input_type -> Token
 	0, // 2: AuthService.GetToken:output_type -> Token
@@ -207,26 +207,26 @@ var file_proto_auth_svc_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for field type_name
 }
 
-func init() { file_proto_auth_svc_proto_init() }
-func file_proto_auth_svc_proto_init() {
-	if File_proto_auth_svc_proto != nil {
+func init() { file_auth_proto_auth_svc_proto_init() }
+func file_auth_proto_auth_svc_proto_init() {
+	if File_auth_proto_auth_svc_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_auth_svc_proto_rawDesc), len(file_proto_auth_svc_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_auth_proto_auth_svc_proto_rawDesc), len(file_auth_proto_auth_svc_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_proto_auth_svc_proto_goTypes,
-		DependencyIndexes: file_proto_auth_svc_proto_depIdxs,
-		MessageInfos:      file_proto_auth_svc_proto_msgTypes,
+		GoTypes:           file_auth_proto_auth_svc_proto_goTypes,
+		DependencyIndexes: file_auth_proto_auth_svc_proto_depIdxs,
+		MessageInfos:      file_auth_proto_auth_svc_proto_msgTypes,
 	}.Build()
-	File_proto_auth_svc_proto = out.File
-	file_proto_auth_svc_proto_goTypes = nil
-	file_proto_auth_svc_proto_depIdxs = nil
+	File_auth_proto_auth_svc_proto = out.File
+	file_auth_proto_auth_svc_proto_goTypes = nil
+	file_auth_proto_auth_svc_proto_depIdxs = nil
 }
