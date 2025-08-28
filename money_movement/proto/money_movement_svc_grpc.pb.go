@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v4.23.4
-// source: proto/money_movement_svc.proto
+// source: money_movement/proto/money_movement_svc.proto
 
 package pb
 
@@ -156,5 +156,5 @@ var MoneyMovementService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "proto/money_movement_svc.proto",
+	Metadata: "money_movement/proto/money_movement_svc.proto",
 }

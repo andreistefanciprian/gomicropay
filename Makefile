@@ -18,6 +18,11 @@ undeploy-auth:
 	@kustomize build auth/infra/k8s | kubectl delete -f -
 
 # money_movement
+proto-money-movement:
+	@protoc \
+	--go_out=paths=source_relative:. \
+	--go-grpc_out=paths=source_relative:. \
+	./money_movement/proto/money_movement_svc.proto
 docker-money-movement:
 	@docker build -t andreistefanciprian/gomicropay-money-movement:latest -f money_movement/infra/Dockerfile money_movement/
 	@docker push andreistefanciprian/gomicropay-money-movement:latest
