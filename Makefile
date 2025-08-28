@@ -2,11 +2,9 @@
 
 deploy-mysql:
 	@kubectl apply -f mysql_auth/manifests/. -n kafka
-	@kubectl apply -f mysql_ledger/manifests/. -n kafka
 
 undeploy-mysql:
 	@kubectl delete -f mysql_auth/manifests/. -n kafka
-	@kubectl delete -f mysql_ledger/manifests/. -n kafka
 
 # api_gateway
 docker-gateway: 
