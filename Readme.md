@@ -1,4 +1,18 @@
 
+
+## Requirements
+
+- Docker
+- GNU Make
+- Kubernetes (local or remote cluster)
+- Kafka (installed via [Strimzi](https://strimzi.io/quickstarts/))
+
+## Microservice Architecture Demo
+
+This repository is a hands-on way to learn about microservice architecture using gRPC and Kafka. It demonstrates service-to-service communication, event-driven workflows, and database integration in a modern distributed system.
+
+![Architecture Overview](architecture.jpg)
+
 #### Test
 ```
 # Deploy all services
