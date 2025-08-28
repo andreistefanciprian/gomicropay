@@ -46,12 +46,12 @@ undeploy-email:
 
 # ledger
 docker-ledger:
-	@docker build -t andreistefanciprian/gomicropay-ledger:latest -f ledger/Dockerfile ledger/
+	@docker build -t andreistefanciprian/gomicropay-ledger:latest -f ledger/infra/Dockerfile ledger/
 	@docker push andreistefanciprian/gomicropay-ledger:latest
 deploy-ledger:
-	@kubectl apply -f ledger/manifests/. -n kafka
+	@kustomize build ledger/infra/k8s | kubectl apply -f -
 undeploy-ledger:
-	@kubectl delete -f ledger/manifests/. -n kafka
+	@kustomize build ledger/infra/k8s | kubectl delete -f -
 
 # all
 deploy-all: deploy-mysql deploy-auth deploy-email deploy-money-movement deploy-gateway deploy-ledger

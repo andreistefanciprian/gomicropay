@@ -30,6 +30,7 @@ mysql>select * from transaction;
 # check logs
 kubectl logs -l app=gateway -n api-gateway -f
 kubectl logs -l app=money-movement -n money-movement -f
+kubectl logs -l app=ledger -n ledger -f
 
 # generate transaction
 bash test_transaction.sh
