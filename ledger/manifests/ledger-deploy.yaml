@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ledger
+  labels:
+    app: ledger
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ledger
+  template:
+    metadata:
+      labels:
+        app: ledger
+    spec:
+      containers:
+        - name: ledger
+          image: andreistefanciprian/gomicropay-ledger:latest
+          imagePullPolicy: Always
+          envFrom:
+            - secretRef:
+                name: ledger-secret
+            - configMapRef:
+                name: ledger-configmap

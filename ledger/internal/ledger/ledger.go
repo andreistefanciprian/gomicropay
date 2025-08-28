@@ -3,7 +3,7 @@ package ledger
 import "database/sql"
 
 func Insert(db *sql.DB, orderID, userID string, amount int64, operation, transactionDate string) error {
-	query := "INSERT INTO ledger (order_id, user_id, amount, operation, transactionDate) VALUES (?, ?, ?, ?, ?)"
+	query := "INSERT INTO ledger (order_id, user_id, amount, operation, transaction_date) VALUES (?, ?, ?, ?, ?)"
 
 	stmt, err := db.Prepare(query)
 	if err != nil {

@@ -5,18 +5,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"sync"
 
 	"github.com/IBM/sarama"
 	"github.com/andreistefanciprian/gomicropay/ledger/internal/ledger"
+	_ "github.com/go-sql-driver/mysql"
 )
 
 const (
-	dbDriver   = "mysql"
-	dbUser     = "root"
-	dbPassword = "Admin123"
-	dbName     = "ledger"
-	topic      = "ledger"
+	dbDriver = "mysql"
+	topic    = "ledger"
 )
 
 var (
@@ -35,7 +34,17 @@ type LedgerMsg struct {
 func main() {
 
 	var err error
-	dsn := fmt.Sprintf("%s:%s@tcp(localhost:3306)/%s", dbUser, dbPassword, dbName)
+	dbUser := os.Getenv("MYSQL_USER")
+	dbPassword := os.Getenv("MYSQL_PASSWORD")
+	dbName := os.Getenv("MYSQL_DB")
+	dbHost := os.Getenv("MYSQL_HOST")
+	dbPort := os.Getenv("MYSQL_PORT")
+	kafkaHost := os.Getenv("KAFKA_HOST")
+	kafkaPort := os.Getenv("KAFKA_PORT")
+	brokerAddr := fmt.Sprintf("%s:%s", kafkaHost, kafkaPort)
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPassword, dbHost, dbPort, dbName)
+
+	// DB connection
 	db, err = sql.Open(dbDriver, dsn)
 	if err != nil {
 		log.Fatal(err)
@@ -57,7 +66,10 @@ func main() {
 	}
 
 	done := make(chan struct{})
-	consumer, err := sarama.NewConsumer([]string{"localhost:9092"}, sarama.NewConfig())
+	sarama.Logger = log.New(os.Stdout, "[sarama]", log.LstdFlags)
+	config := sarama.NewConfig()
+	config.Producer.Return.Successes = true
+	consumer, err := sarama.NewConsumer([]string{brokerAddr}, config)
 	if err != nil {
 		log.Fatal("Error creating consumer:", err)
 	}
@@ -68,7 +80,7 @@ func main() {
 		}
 	}()
 
-	partitions, err := consumer.partitions(topic)
+	partitions, err := consumer.Partitions(topic)
 	if err != nil {
 		log.Fatal(err)
 	}
