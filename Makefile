@@ -1,11 +1,4 @@
 
-
-deploy-mysql:
-	@kubectl apply -f mysql_auth/manifests/. -n kafka
-
-undeploy-mysql:
-	@kubectl delete -f mysql_auth/manifests/. -n kafka
-
 # api_gateway
 docker-gateway: 
 	@docker build -t andreistefanciprian/gomicropay-gateway:latest -f api_gateway/infra/Dockerfile api_gateway/
@@ -17,12 +10,12 @@ undeploy-gateway:
 
 # auth
 docker-auth:
-	@docker build -t andreistefanciprian/gomicropay-auth:latest -f auth/Dockerfile auth/
+	@docker build -t andreistefanciprian/gomicropay-auth:latest -f auth/infra/Dockerfile auth/
 	@docker push andreistefanciprian/gomicropay-auth:latest
 deploy-auth:
-	@kubectl apply -f auth/manifests/. -n kafka
+	@kustomize build auth/infra/k8s | kubectl apply -f -
 undeploy-auth:
-	@kubectl delete -f auth/manifests/. -n kafka
+	@kustomize build auth/infra/k8s | kubectl delete -f -
 
 # money_movement
 docker-money-movement:
@@ -52,6 +45,6 @@ undeploy-ledger:
 	@kustomize build ledger/infra/k8s | kubectl delete -f -
 
 # all
-deploy-all: deploy-mysql deploy-auth deploy-email deploy-money-movement deploy-gateway deploy-ledger
-undeploy-all: undeploy-auth undeploy-email undeploy-money-movement undeploy-gateway undeploy-mysql undeploy-ledger
+deploy-all: deploy-auth deploy-email deploy-money-movement deploy-gateway deploy-ledger
+undeploy-all: undeploy-auth undeploy-email undeploy-money-movement undeploy-gateway undeploy-ledger
 
