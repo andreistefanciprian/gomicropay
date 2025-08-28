@@ -124,16 +124,20 @@ func (i *Implementation) Authorize(ctx context.Context, authorizePayload *pb.Aut
 }
 
 func (i *Implementation) Capture(ctx context.Context, capturePayload *pb.CapturePayload) (*emptypb.Empty, error) {
+	fmt.Printf("Capture called with payload: %+v\n", capturePayload)
 	// Begin the transaction
 	tx, err := i.db.Begin()
 	if err != nil {
+		fmt.Printf("Capture failed: could not begin transaction: %v\n", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	authorizeTransaction, err := fetchTransaction(tx, capturePayload.Pid)
 	if err != nil {
+		fmt.Printf("Capture failed: could not fetch transaction: %v\n", err)
 		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
+			fmt.Printf("Capture failed: could not rollback after fetchTransaction error: %v\n", rollbackErr)
 			return nil, status.Error(codes.Internal, rollbackErr.Error())
 		}
 		return nil, err
@@ -141,8 +145,10 @@ func (i *Implementation) Capture(ctx context.Context, capturePayload *pb.Capture
 
 	srcAccount, err := fetchAccount(tx, authorizeTransaction.dstAccountWalletID, "PAYMENT")
 	if err != nil {
+		fmt.Printf("Capture failed: could not fetch src account: %v\n", err)
 		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
+			fmt.Printf("Capture failed: could not rollback after src account error: %v\n", rollbackErr)
 			return nil, status.Error(codes.Internal, rollbackErr.Error())
 		}
 		return nil, err
@@ -150,17 +156,22 @@ func (i *Implementation) Capture(ctx context.Context, capturePayload *pb.Capture
 
 	dstMerchantAccount, err := fetchAccount(tx, authorizeTransaction.finalDstMerchantWalletID, "INCOMING")
 	if err != nil {
+		fmt.Printf("Capture failed: could not fetch dst merchant account: %v\n", err)
 		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
+			fmt.Printf("Capture failed: could not rollback after dst merchant account error: %v\n", rollbackErr)
 			return nil, status.Error(codes.Internal, rollbackErr.Error())
 		}
 		return nil, err
 	}
 
+	fmt.Printf("Capture: transferring %d cents from srcAccount %d to dstMerchantAccount %d\n", authorizeTransaction.amount, srcAccount.ID, dstMerchantAccount.ID)
 	err = transfer(tx, srcAccount, dstMerchantAccount, authorizeTransaction.amount)
 	if err != nil {
+		fmt.Printf("Capture failed: transfer error: %v\n", err)
 		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
+			fmt.Printf("Capture failed: could not rollback after transfer error: %v\n", rollbackErr)
 			return nil, status.Error(codes.Internal, rollbackErr.Error())
 		}
 		return nil, err
@@ -168,8 +179,10 @@ func (i *Implementation) Capture(ctx context.Context, capturePayload *pb.Capture
 
 	customerWallet, err := fetchWallet(tx, authorizeTransaction.srcUserID)
 	if err != nil {
+		fmt.Printf("Capture failed: could not fetch customer wallet: %v\n", err)
 		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
+			fmt.Printf("Capture failed: could not rollback after customer wallet error: %v\n", rollbackErr)
 			return nil, status.Error(codes.Internal, rollbackErr.Error())
 		}
 		return nil, err
@@ -177,8 +190,10 @@ func (i *Implementation) Capture(ctx context.Context, capturePayload *pb.Capture
 
 	merchantWallet, err := fetchWalletWithWalletID(tx, authorizeTransaction.finalDstMerchantWalletID)
 	if err != nil {
+		fmt.Printf("Capture failed: could not fetch merchant wallet: %v\n", err)
 		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
+			fmt.Printf("Capture failed: could not rollback after merchant wallet error: %v\n", rollbackErr)
 			return nil, status.Error(codes.Internal, rollbackErr.Error())
 		}
 		return nil, err
@@ -186,8 +201,10 @@ func (i *Implementation) Capture(ctx context.Context, capturePayload *pb.Capture
 
 	err = createTransaction(tx, authorizeTransaction.pid, srcAccount, dstMerchantAccount, customerWallet, merchantWallet, merchantWallet, authorizeTransaction.amount)
 	if err != nil {
+		fmt.Printf("Capture failed: createTransaction error: %v\n", err)
 		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
+			fmt.Printf("Capture failed: could not rollback after createTransaction error: %v\n", rollbackErr)
 			return nil, status.Error(codes.Internal, rollbackErr.Error())
 		}
 		return nil, err
@@ -196,13 +213,16 @@ func (i *Implementation) Capture(ctx context.Context, capturePayload *pb.Capture
 	// Commit tx
 	err = tx.Commit()
 	if err != nil {
+		fmt.Printf("Capture failed: commit error: %v\n", err)
 		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
+			fmt.Printf("Capture failed: could not rollback after commit error: %v\n", rollbackErr)
 			return nil, status.Error(codes.Internal, rollbackErr.Error())
 		}
 		return nil, err
 	}
 
+	fmt.Printf("Capture succeeded: pid=%s\n", authorizeTransaction.pid)
 	producer.SendCaptureMessage(authorizeTransaction.pid, authorizeTransaction.srcUserID, authorizeTransaction.amount)
 
 	return &emptypb.Empty{}, nil
@@ -327,7 +347,7 @@ func fetchTransaction(tx *sql.Tx, pid string) (transaction, error) {
 	}
 	defer stmt.Close()
 
-	err = stmt.QueryRow(pid).Scan(&t.ID, &t.pid, &t.srcUserID, &t.dstUserID, &t.srcAccountID, &t.dstAccountID, &t.srcAccountType, &t.dstAccountType, &t.finalDstMerchantWalletID, &t.amount)
+	err = stmt.QueryRow(pid).Scan(&t.pid, &t.srcUserID, &t.dstUserID, &t.srcAccountWalletID, &t.dstAccountWalletID, &t.srcAccountID, &t.dstAccountID, &t.srcAccountType, &t.dstAccountType, &t.finalDstMerchantWalletID, &t.amount)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return t, status.Error(codes.InvalidArgument, err.Error())
