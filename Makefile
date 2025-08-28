@@ -12,12 +12,12 @@ undeploy-mysql:
 
 # api_gateway
 docker-gateway: 
-	@docker build -t andreistefanciprian/gomicropay-gateway:latest -f api_gateway/Dockerfile api_gateway/
+	@docker build -t andreistefanciprian/gomicropay-gateway:latest -f api_gateway/infra/Dockerfile api_gateway/
 	@docker push andreistefanciprian/gomicropay-gateway:latest
 deploy-gateway:
-	@kubectl apply -f api_gateway/manifests/. -n kafka
+	@kustomize build api_gateway/infra/k8s | kubectl apply -n api-gateway -f -
 undeploy-gateway:
-	@kubectl delete -f api_gateway/manifests/. -n kafka
+	@kustomize build api_gateway/infra/k8s | kubectl delete -n api-gateway -f -
 
 # auth
 docker-auth:

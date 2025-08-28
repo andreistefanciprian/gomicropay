@@ -19,7 +19,7 @@ This repository is a hands-on way to learn about microservice architecture using
 make deploy-all
 
 # Port-forward API Gateway to localhost:8080
-kubectl port-forward gateway 8080:8080 -n kafka
+kubectl port-forward service/gateway 8080:8080 -n api-gateway
 
 # generate transaction
 bash test_transaction.sh
