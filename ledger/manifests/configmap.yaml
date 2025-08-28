@@ -3,4 +3,4 @@ kind: ConfigMap
 metadata:
   name: ledger-configmap
 data:
-  PLACEHOLDER: "NONE"
+  LOG_LEVEL: "DEBUG"

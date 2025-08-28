@@ -18,6 +18,20 @@ const (
 	topic    = "ledger"
 )
 
+var logLevel string
+
+func logDebug(format string, v ...interface{}) {
+	if logLevel == "DEBUG" {
+		log.Printf("[DEBUG] "+format, v...)
+	}
+}
+
+func logInfo(format string, v ...interface{}) {
+	if logLevel == "INFO" || logLevel == "DEBUG" {
+		log.Printf("[INFO] "+format, v...)
+	}
+}
+
 var (
 	db *sql.DB
 	wg sync.WaitGroup
@@ -34,6 +48,11 @@ type LedgerMsg struct {
 func main() {
 
 	var err error
+	logLevel = os.Getenv("LOG_LEVEL")
+	if logLevel == "" {
+		logLevel = "INFO"
+	}
+	logInfo("Starting ledger consumer with log level: %s", logLevel)
 	dbUser := os.Getenv("MYSQL_USER")
 	dbPassword := os.Getenv("MYSQL_PASSWORD")
 	dbName := os.Getenv("MYSQL_DB")
@@ -66,27 +85,28 @@ func main() {
 	}
 
 	done := make(chan struct{})
-	sarama.Logger = log.New(os.Stdout, "[sarama]", log.LstdFlags)
+	sarama.Logger = log.New(os.Stdout, "[ledger-consumer]", log.LstdFlags)
 	config := sarama.NewConfig()
 	config.Producer.Return.Successes = true
-	consumer, err := sarama.NewConsumer([]string{brokerAddr}, config)
+	ledgerConsumer, err := sarama.NewConsumer([]string{brokerAddr}, config)
 	if err != nil {
-		log.Fatal("Error creating consumer:", err)
+		log.Fatal("Error creating ledger consumer:", err)
 	}
 	defer func() {
 		close(done)
-		if err := consumer.Close(); err != nil {
-			log.Println("Error closing consumer:", err)
+		if err := ledgerConsumer.Close(); err != nil {
+			log.Println("Error closing ledger consumer:", err)
 		}
 	}()
 
-	partitions, err := consumer.Partitions(topic)
+	partitions, err := ledgerConsumer.Partitions(topic)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	for _, partition := range partitions {
-		partitionConsumer, err := consumer.ConsumePartition(topic, partition, sarama.OffsetNewest)
+		logInfo("Starting ledger consumer for partition %d", partition)
+		partitionConsumer, err := ledgerConsumer.ConsumePartition(topic, partition, sarama.OffsetNewest)
 		if err != nil {
 			log.Fatal("Error creating partition consumer:", err)
 		}
@@ -101,7 +121,6 @@ func main() {
 	}
 
 	wg.Wait()
-	// close(done)
 }
 
 func awaitMessages(partitionConsumer sarama.PartitionConsumer, partition int32, done chan struct{}) {
@@ -109,10 +128,11 @@ func awaitMessages(partitionConsumer sarama.PartitionConsumer, partition int32, 
 	for {
 		select {
 		case msg := <-partitionConsumer.Messages():
-			log.Printf("Partition %d: Received message: %s\n", partition, string(msg.Value))
+			logInfo("Partition %d: Received message", partition)
+			logDebug("Partition %d: Message body: %s", partition, string(msg.Value))
 			handleMessage(msg)
 		case <-done:
-			log.Printf("Received Done signal.Partition %d: Shutting down consumer\n", partition)
+			logInfo("Received Done signal. Partition %d: Shutting down consumer", partition)
 			return
 		}
 	}
@@ -121,12 +141,14 @@ func awaitMessages(partitionConsumer sarama.PartitionConsumer, partition int32, 
 func handleMessage(msg *sarama.ConsumerMessage) {
 	var ledgerlMsg LedgerMsg
 	if err := json.Unmarshal(msg.Value, &ledgerlMsg); err != nil {
-		log.Println("Error unmarshalling message:", err)
+		logInfo("Error unmarshalling message: %v", err)
 		return
 	}
+	logDebug("LedgerMsg unmarshalled: %+v", ledgerlMsg)
 	err := ledger.Insert(db, ledgerlMsg.OrderID, ledgerlMsg.UserID, ledgerlMsg.Amount, ledgerlMsg.Operation, ledgerlMsg.Date)
 	if err != nil {
-		log.Println("Error inserting ledger message:", err)
+		logInfo("Error inserting ledger message: %v", err)
 		return
 	}
+	logInfo("Ledger message inserted for order %s, user %s", ledgerlMsg.OrderID, ledgerlMsg.UserID)
 }
