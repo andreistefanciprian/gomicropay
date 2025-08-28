@@ -33,7 +33,9 @@ func SendCaptureMessage(pid, userID string, amount int64) {
 	sarama.Logger = log.New(os.Stdout, "[sarama]", log.LstdFlags)
 
 	// Create a sync Producer
-	producer, err := sarama.NewSyncProducer([]string{"my-cluster-kafka-bootstrap:9092"}, sarama.NewConfig())
+	config := sarama.NewConfig()
+	config.Producer.Return.Successes = true
+	producer, err := sarama.NewSyncProducer([]string{"my-cluster-kafka-bootstrap:9092"}, config)
 	if err != nil {
 		log.Println("Error creating producer:", err)
 		return
