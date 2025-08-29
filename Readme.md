@@ -1,12 +1,3 @@
-
-
-## Requirements
-
-- Docker
-- GNU Make
-- Kubernetes (local or remote cluster)
-- Kafka (installed via [Strimzi](https://strimzi.io/quickstarts/))
-
 ## Microservice Architecture Demo
 
 This repository is a hands-on way to learn about microservice architecture using gRPC and Kafka. It demonstrates service-to-service communication, event-driven workflows, and database integration in a modern distributed system.
@@ -25,7 +16,15 @@ This repository is a hands-on way to learn about microservice architecture using
 - The Ledger service picks up the event and updates its records, while the Email service sends the user a notification about the transaction.
 - Finally, the Money Movement service returns a confirmation back to the user indicating that the transaction was successful.
 
-#### Test
+
+## Deploy, Test and Debug
+
+Requirements:
+- Docker
+- GNU Make
+- Kubernetes (local or remote cluster)
+- Kafka (installed via [Strimzi](https://strimzi.io/quickstarts/))
+
 ```
 # Deploy all services
 make deploy-all
