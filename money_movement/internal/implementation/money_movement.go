@@ -250,8 +250,10 @@ func (i *Implementation) Capture(ctx context.Context, capturePayload *pb.Capture
 		return nil, err
 	}
 
+	logInfo("Transaction succeeded: pid=%s", authorizeTransaction.pid)
+
 	// Send Kafka message
-	logInfo("Capture succeeded: pid=%s", authorizeTransaction.pid)
+	logInfo("Sending Kafka messages for transaction: pid=%s", authorizeTransaction.pid)
 	producer.SendCaptureMessage(i.producer, authorizeTransaction.pid, authorizeTransaction.srcUserID, authorizeTransaction.amount)
 
 	return &emptypb.Empty{}, nil
