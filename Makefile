@@ -39,12 +39,12 @@ undeploy-money-movement:
 
 # email
 docker-email:
-	@docker build -t andreistefanciprian/gomicropay-email:latest -f email/Dockerfile email/
+	@docker build -t andreistefanciprian/gomicropay-email:latest -f email/infra/Dockerfile email/
 	@docker push andreistefanciprian/gomicropay-email:latest
 deploy-email:
-	@kubectl apply -f email/manifests/. -n kafka
+	@kustomize build email/infra/k8s | kubectl apply -f -
 undeploy-email:
-	@kubectl delete -f email/manifests/. -n kafka
+	@kustomize build email/infra/k8s | kubectl delete -f -
 
 # ledger
 docker-ledger:

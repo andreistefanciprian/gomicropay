@@ -13,6 +13,8 @@ This repository is a hands-on way to learn about microservice architecture using
 
 ![Architecture Overview](architecture.jpg)
 
+## Transaction Flow
+
 #### Test
 ```
 # Deploy all services
@@ -34,6 +36,7 @@ kubectl logs -l app=gateway -n api-gateway -f
 kubectl logs -l app=money-movement -n money-movement -f
 kubectl logs -l app=ledger -n ledger -f
 kubectl logs -l app=auth -n auth -f
+kubectl logs -l app=email -n email -f
 
 # generate transaction
 bash test_transaction.sh
