@@ -27,6 +27,8 @@ mysql>use money_movement;
 mysql>show tables;
 mysql>select * from transaction;
 
+k exec -ti mysql-client -n money-movement -- mysql -h mysql-ledger.ledger -u ledger_user -p
+
 # check logs
 kubectl logs -l app=gateway -n api-gateway -f
 kubectl logs -l app=money-movement -n money-movement -f
