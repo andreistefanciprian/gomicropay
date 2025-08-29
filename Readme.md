@@ -11,9 +11,19 @@
 
 This repository is a hands-on way to learn about microservice architecture using gRPC and Kafka. It demonstrates service-to-service communication, event-driven workflows, and database integration in a modern distributed system.
 
-![Architecture Overview](architecture.jpg)
+![Architecture Overview](microservices_architecture.jpg)
 
 ## Transaction Flow
+
+- The user first sends their login credentials through the REST API Gateway, which forwards the request to the Auth service over gRPC. 
+- If the authentication is successful, the Auth service responds with a JWT token.
+- From then on, the user includes this token in the request header whenever making a transaction call to the API Gateway. 
+- The Gateway checks the token’s validity with the Auth service before moving forward.
+- Once authorized, the API Gateway passes the transaction request to the Money Movement service over gRPC. 
+- This service debits the user’s DEFAULT account and credits the PAYMENT account, recording the transaction in its database.
+- At the same time, the Money Movement service produces two event messages to Kafka, which are then consumed by other services. 
+- The Ledger service picks up the event and updates its records, while the Email service sends the user a notification about the transaction.
+- Finally, the Money Movement service returns a confirmation back to the user indicating that the transaction was successful.
 
 #### Test
 ```
