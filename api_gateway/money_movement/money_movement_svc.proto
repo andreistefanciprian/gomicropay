@@ -7,6 +7,7 @@ option go_package = "github.com/andreistefanciprian/gomicropay/money_movement/pr
 service MoneyMovementService {
     rpc Authorize(AuthorizePayload) returns (AuthorizeResponse);
     rpc Capture(CapturePayload) returns (google.protobuf.Empty);
+    rpc CheckBalance(CheckBalancePayload) returns (CheckBalanceResponse);
 }
 
 message AuthorizePayload {
@@ -24,3 +25,10 @@ message AuthorizeResponse {
     string pid = 1;
 }
 
+message CheckBalancePayload {
+    string userId = 1;
+}
+
+message CheckBalanceResponse {
+    int64 balanceCents = 1;
+}
