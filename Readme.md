@@ -4,6 +4,23 @@ This repository is a hands-on way to learn about microservice architecture using
 
 ![Architecture Overview](microservices_architecture.jpg)
 
+## API Gateway Endpoints
+
+All endpoints require requests to include the JWT token in the `Authorization` header after login.
+```
+# Authenticate user and receive JWT token
+JWT_TOKEN=$(curl -s -u cip@email.com:Admin123 http://localhost:8080/login)
+
+# Authorize a transaction (requires JWT)
+pid=$(curl -s -X POST -H "Authorization: Bearer $JWT_TOKEN" --data @authorize_payload.json http://localhost:8080/customer/payment/authorize | jq -r .pid)
+
+# Capture payment using pid
+curl -X POST -H "Authorization: Bearer $JWT_TOKEN" -d "{\"pid\": \"$pid\"}" http://localhost:8080/customer/payment/capture
+
+# Get account balance (requires JWT)
+curl -X POST -H "Authorization: Bearer $JWT_TOKEN" -d "{\"wallet_user_id\": \"cip@email.com\"}" http://localhost:8080/checkbalance
+```
+
 ## Transaction Flow
 
 - The user first sends their login credentials through the REST API Gateway, which forwards the request to the Auth service over gRPC. 
@@ -21,7 +38,7 @@ This repository is a hands-on way to learn about microservice architecture using
 
 Requirements:
 - Docker
-- GNU Make
+- Makefile
 - Kubernetes (local or remote cluster)
 - Kafka (installed via [Strimzi](https://strimzi.io/quickstarts/))
 
@@ -33,12 +50,12 @@ make deploy-all
 kubectl port-forward service/gateway 8080:8080 -n api-gateway
 
 # Debug MySQL money movement database
-kubectlk exec -ti mysql-client -n money-movement -- mysql -h mysql-money-movement -u money_movement_user -p
+kubectl exec -ti mysql-client -n money-movement -- mysql -h mysql-money-movement -u money_movement_user -p
 mysql>use money_movement;
 mysql>show tables;
 mysql>select * from transaction;
 
-k exec -ti mysql-client -n money-movement -- mysql -h mysql-ledger.ledger -u ledger_user -p
+kubectl exec -ti mysql-client -n money-movement -- mysql -h mysql-ledger.ledger -u ledger_user -p
 
 # check logs
 kubectl logs -l app=gateway -n api-gateway -f

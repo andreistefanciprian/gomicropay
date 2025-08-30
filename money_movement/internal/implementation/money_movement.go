@@ -259,6 +259,66 @@ func (i *Implementation) Capture(ctx context.Context, capturePayload *pb.Capture
 	return &emptypb.Empty{}, nil
 }
 
+func (i *Implementation) CheckBalance(ctx context.Context, checkBalancePayload *pb.CheckBalancePayload) (*pb.CheckBalanceResponse, error) {
+	logInfo("CheckBalance called with payload: %+v", checkBalancePayload)
+	// Begin the transaction
+	tx, err := i.db.Begin()
+	if err != nil {
+		logInfo("CheckBalance failed: could not begin transaction: %v", err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	// get wallet based on user_id
+	wallet, err := fetchWallet(tx, checkBalancePayload.UserId)
+	if err != nil {
+		logInfo("CheckBalance failed: could not fetch wallet: %v", err)
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			fmt.Printf("CheckBalance failed: could not rollback after fetchWallet error: %v\n", rollbackErr)
+			return nil, status.Error(codes.Internal, rollbackErr.Error())
+		}
+		return nil, err
+	}
+	logDebug("Fetched wallet: %+v", wallet)
+
+	// determine account type based on wallet_type
+	var accountType string
+	if wallet.walletType == "CUSTOMER" {
+		accountType = "DEFAULT"
+	} else {
+		accountType = "INCOMING"
+	}
+
+	// get account data based on wallet_id
+	account, err := fetchAccount(tx, wallet.ID, accountType)
+	if err != nil {
+		logInfo("CheckBalance failed: could not fetch account: %v", err)
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			fmt.Printf("CheckBalance failed: could not rollback after fetchAccount error: %v\n", rollbackErr)
+			return nil, status.Error(codes.Internal, rollbackErr.Error())
+		}
+		return nil, err
+	}
+	logDebug("Fetched account: %+v", account)
+
+	// Commit tx
+	err = tx.Commit()
+	if err != nil {
+		logInfo("CheckBalance failed: commit error: %v", err)
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			fmt.Printf("CheckBalance failed: could not rollback after commit error: %v\n", rollbackErr)
+			return nil, status.Error(codes.Internal, rollbackErr.Error())
+		}
+		return nil, err
+	}
+
+	logInfo("CheckBalance succeeded: userId=%s, balanceCents=%d", checkBalancePayload.UserId, account.cents)
+	return &pb.CheckBalanceResponse{
+		BalanceCents: account.cents,
+	}, nil
+}
+
 func fetchWallet(tx *sql.Tx, userID string) (wallet, error) {
 	var w wallet
 

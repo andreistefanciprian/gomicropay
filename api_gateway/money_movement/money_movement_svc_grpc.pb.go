@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v4.23.4
-// source: proto/money_movement_svc.proto
+// source: money_movement/proto/money_movement_svc.proto
 
 package pb
 
@@ -20,8 +20,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	MoneyMovementService_Authorize_FullMethodName = "/MoneyMovementService/Authorize"
-	MoneyMovementService_Capture_FullMethodName   = "/MoneyMovementService/Capture"
+	MoneyMovementService_Authorize_FullMethodName    = "/MoneyMovementService/Authorize"
+	MoneyMovementService_Capture_FullMethodName      = "/MoneyMovementService/Capture"
+	MoneyMovementService_CheckBalance_FullMethodName = "/MoneyMovementService/CheckBalance"
 )
 
 // MoneyMovementServiceClient is the client API for MoneyMovementService service.
@@ -30,6 +31,7 @@ const (
 type MoneyMovementServiceClient interface {
 	Authorize(ctx context.Context, in *AuthorizePayload, opts ...grpc.CallOption) (*AuthorizeResponse, error)
 	Capture(ctx context.Context, in *CapturePayload, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	CheckBalance(ctx context.Context, in *CheckBalancePayload, opts ...grpc.CallOption) (*CheckBalanceResponse, error)
 }
 
 type moneyMovementServiceClient struct {
@@ -60,12 +62,23 @@ func (c *moneyMovementServiceClient) Capture(ctx context.Context, in *CapturePay
 	return out, nil
 }
 
+func (c *moneyMovementServiceClient) CheckBalance(ctx context.Context, in *CheckBalancePayload, opts ...grpc.CallOption) (*CheckBalanceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CheckBalanceResponse)
+	err := c.cc.Invoke(ctx, MoneyMovementService_CheckBalance_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MoneyMovementServiceServer is the server API for MoneyMovementService service.
 // All implementations must embed UnimplementedMoneyMovementServiceServer
 // for forward compatibility.
 type MoneyMovementServiceServer interface {
 	Authorize(context.Context, *AuthorizePayload) (*AuthorizeResponse, error)
 	Capture(context.Context, *CapturePayload) (*emptypb.Empty, error)
+	CheckBalance(context.Context, *CheckBalancePayload) (*CheckBalanceResponse, error)
 	mustEmbedUnimplementedMoneyMovementServiceServer()
 }
 
@@ -81,6 +94,9 @@ func (UnimplementedMoneyMovementServiceServer) Authorize(context.Context, *Autho
 }
 func (UnimplementedMoneyMovementServiceServer) Capture(context.Context, *CapturePayload) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Capture not implemented")
+}
+func (UnimplementedMoneyMovementServiceServer) CheckBalance(context.Context, *CheckBalancePayload) (*CheckBalanceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CheckBalance not implemented")
 }
 func (UnimplementedMoneyMovementServiceServer) mustEmbedUnimplementedMoneyMovementServiceServer() {}
 func (UnimplementedMoneyMovementServiceServer) testEmbeddedByValue()                              {}
@@ -139,6 +155,24 @@ func _MoneyMovementService_Capture_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MoneyMovementService_CheckBalance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CheckBalancePayload)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MoneyMovementServiceServer).CheckBalance(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MoneyMovementService_CheckBalance_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MoneyMovementServiceServer).CheckBalance(ctx, req.(*CheckBalancePayload))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MoneyMovementService_ServiceDesc is the grpc.ServiceDesc for MoneyMovementService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -154,7 +188,11 @@ var MoneyMovementService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "Capture",
 			Handler:    _MoneyMovementService_Capture_Handler,
 		},
+		{
+			MethodName: "CheckBalance",
+			Handler:    _MoneyMovementService_CheckBalance_Handler,
+		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "proto/money_movement_svc.proto",
+	Metadata: "money_movement/proto/money_movement_svc.proto",
 }

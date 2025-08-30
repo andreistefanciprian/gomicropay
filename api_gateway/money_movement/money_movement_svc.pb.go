@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.8
 // 	protoc        v4.23.4
-// source: proto/money_movement_svc.proto
+// source: money_movement/proto/money_movement_svc.proto
 
 package pb
 
@@ -34,7 +34,7 @@ type AuthorizePayload struct {
 
 func (x *AuthorizePayload) Reset() {
 	*x = AuthorizePayload{}
-	mi := &file_proto_money_movement_svc_proto_msgTypes[0]
+	mi := &file_money_movement_proto_money_movement_svc_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -46,7 +46,7 @@ func (x *AuthorizePayload) String() string {
 func (*AuthorizePayload) ProtoMessage() {}
 
 func (x *AuthorizePayload) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_money_movement_svc_proto_msgTypes[0]
+	mi := &file_money_movement_proto_money_movement_svc_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -59,7 +59,7 @@ func (x *AuthorizePayload) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuthorizePayload.ProtoReflect.Descriptor instead.
 func (*AuthorizePayload) Descriptor() ([]byte, []int) {
-	return file_proto_money_movement_svc_proto_rawDescGZIP(), []int{0}
+	return file_money_movement_proto_money_movement_svc_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *AuthorizePayload) GetCustomerWalletUserId() string {
@@ -99,7 +99,7 @@ type CapturePayload struct {
 
 func (x *CapturePayload) Reset() {
 	*x = CapturePayload{}
-	mi := &file_proto_money_movement_svc_proto_msgTypes[1]
+	mi := &file_money_movement_proto_money_movement_svc_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -111,7 +111,7 @@ func (x *CapturePayload) String() string {
 func (*CapturePayload) ProtoMessage() {}
 
 func (x *CapturePayload) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_money_movement_svc_proto_msgTypes[1]
+	mi := &file_money_movement_proto_money_movement_svc_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -124,7 +124,7 @@ func (x *CapturePayload) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CapturePayload.ProtoReflect.Descriptor instead.
 func (*CapturePayload) Descriptor() ([]byte, []int) {
-	return file_proto_money_movement_svc_proto_rawDescGZIP(), []int{1}
+	return file_money_movement_proto_money_movement_svc_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *CapturePayload) GetPid() string {
@@ -143,7 +143,7 @@ type AuthorizeResponse struct {
 
 func (x *AuthorizeResponse) Reset() {
 	*x = AuthorizeResponse{}
-	mi := &file_proto_money_movement_svc_proto_msgTypes[2]
+	mi := &file_money_movement_proto_money_movement_svc_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -155,7 +155,7 @@ func (x *AuthorizeResponse) String() string {
 func (*AuthorizeResponse) ProtoMessage() {}
 
 func (x *AuthorizeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_money_movement_svc_proto_msgTypes[2]
+	mi := &file_money_movement_proto_money_movement_svc_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -168,7 +168,7 @@ func (x *AuthorizeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuthorizeResponse.ProtoReflect.Descriptor instead.
 func (*AuthorizeResponse) Descriptor() ([]byte, []int) {
-	return file_proto_money_movement_svc_proto_rawDescGZIP(), []int{2}
+	return file_money_movement_proto_money_movement_svc_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *AuthorizeResponse) GetPid() string {
@@ -178,11 +178,99 @@ func (x *AuthorizeResponse) GetPid() string {
 	return ""
 }
 
-var File_proto_money_movement_svc_proto protoreflect.FileDescriptor
+type CheckBalancePayload struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=userId,proto3" json:"userId,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
 
-const file_proto_money_movement_svc_proto_rawDesc = "" +
+func (x *CheckBalancePayload) Reset() {
+	*x = CheckBalancePayload{}
+	mi := &file_money_movement_proto_money_movement_svc_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CheckBalancePayload) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CheckBalancePayload) ProtoMessage() {}
+
+func (x *CheckBalancePayload) ProtoReflect() protoreflect.Message {
+	mi := &file_money_movement_proto_money_movement_svc_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CheckBalancePayload.ProtoReflect.Descriptor instead.
+func (*CheckBalancePayload) Descriptor() ([]byte, []int) {
+	return file_money_movement_proto_money_movement_svc_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *CheckBalancePayload) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type CheckBalanceResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	BalanceCents  int64                  `protobuf:"varint,1,opt,name=balanceCents,proto3" json:"balanceCents,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CheckBalanceResponse) Reset() {
+	*x = CheckBalanceResponse{}
+	mi := &file_money_movement_proto_money_movement_svc_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CheckBalanceResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CheckBalanceResponse) ProtoMessage() {}
+
+func (x *CheckBalanceResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_money_movement_proto_money_movement_svc_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CheckBalanceResponse.ProtoReflect.Descriptor instead.
+func (*CheckBalanceResponse) Descriptor() ([]byte, []int) {
+	return file_money_movement_proto_money_movement_svc_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *CheckBalanceResponse) GetBalanceCents() int64 {
+	if x != nil {
+		return x.BalanceCents
+	}
+	return 0
+}
+
+var File_money_movement_proto_money_movement_svc_proto protoreflect.FileDescriptor
+
+const file_money_movement_proto_money_movement_svc_proto_rawDesc = "" +
 	"\n" +
-	"\x1eproto/money_movement_svc.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xac\x01\n" +
+	"-money_movement/proto/money_movement_svc.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xac\x01\n" +
 	"\x10AuthorizePayload\x122\n" +
 	"\x14customerWalletUserId\x18\x01 \x01(\tR\x14customerWalletUserId\x122\n" +
 	"\x14merchantWalletUserId\x18\x02 \x01(\tR\x14merchantWalletUserId\x12\x14\n" +
@@ -191,62 +279,71 @@ const file_proto_money_movement_svc_proto_rawDesc = "" +
 	"\x0eCapturePayload\x12\x10\n" +
 	"\x03pid\x18\x01 \x01(\tR\x03pid\"%\n" +
 	"\x11AuthorizeResponse\x12\x10\n" +
-	"\x03pid\x18\x01 \x01(\tR\x03pid2~\n" +
+	"\x03pid\x18\x01 \x01(\tR\x03pid\"-\n" +
+	"\x13CheckBalancePayload\x12\x16\n" +
+	"\x06userId\x18\x01 \x01(\tR\x06userId\":\n" +
+	"\x14CheckBalanceResponse\x12\"\n" +
+	"\fbalanceCents\x18\x01 \x01(\x03R\fbalanceCents2\xbb\x01\n" +
 	"\x14MoneyMovementService\x122\n" +
 	"\tAuthorize\x12\x11.AuthorizePayload\x1a\x12.AuthorizeResponse\x122\n" +
-	"\aCapture\x12\x0f.CapturePayload\x1a\x16.google.protobuf.EmptyBCZAgithub.com/andreistefanciprian/gomicropay/money_movement/proto/pbb\x06proto3"
+	"\aCapture\x12\x0f.CapturePayload\x1a\x16.google.protobuf.Empty\x12;\n" +
+	"\fCheckBalance\x12\x14.CheckBalancePayload\x1a\x15.CheckBalanceResponseBCZAgithub.com/andreistefanciprian/gomicropay/money_movement/proto/pbb\x06proto3"
 
 var (
-	file_proto_money_movement_svc_proto_rawDescOnce sync.Once
-	file_proto_money_movement_svc_proto_rawDescData []byte
+	file_money_movement_proto_money_movement_svc_proto_rawDescOnce sync.Once
+	file_money_movement_proto_money_movement_svc_proto_rawDescData []byte
 )
 
-func file_proto_money_movement_svc_proto_rawDescGZIP() []byte {
-	file_proto_money_movement_svc_proto_rawDescOnce.Do(func() {
-		file_proto_money_movement_svc_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_proto_money_movement_svc_proto_rawDesc), len(file_proto_money_movement_svc_proto_rawDesc)))
+func file_money_movement_proto_money_movement_svc_proto_rawDescGZIP() []byte {
+	file_money_movement_proto_money_movement_svc_proto_rawDescOnce.Do(func() {
+		file_money_movement_proto_money_movement_svc_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_money_movement_proto_money_movement_svc_proto_rawDesc), len(file_money_movement_proto_money_movement_svc_proto_rawDesc)))
 	})
-	return file_proto_money_movement_svc_proto_rawDescData
+	return file_money_movement_proto_money_movement_svc_proto_rawDescData
 }
 
-var file_proto_money_movement_svc_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
-var file_proto_money_movement_svc_proto_goTypes = []any{
-	(*AuthorizePayload)(nil),  // 0: AuthorizePayload
-	(*CapturePayload)(nil),    // 1: CapturePayload
-	(*AuthorizeResponse)(nil), // 2: AuthorizeResponse
-	(*emptypb.Empty)(nil),     // 3: google.protobuf.Empty
+var file_money_movement_proto_money_movement_svc_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_money_movement_proto_money_movement_svc_proto_goTypes = []any{
+	(*AuthorizePayload)(nil),     // 0: AuthorizePayload
+	(*CapturePayload)(nil),       // 1: CapturePayload
+	(*AuthorizeResponse)(nil),    // 2: AuthorizeResponse
+	(*CheckBalancePayload)(nil),  // 3: CheckBalancePayload
+	(*CheckBalanceResponse)(nil), // 4: CheckBalanceResponse
+	(*emptypb.Empty)(nil),        // 5: google.protobuf.Empty
 }
-var file_proto_money_movement_svc_proto_depIdxs = []int32{
+var file_money_movement_proto_money_movement_svc_proto_depIdxs = []int32{
 	0, // 0: MoneyMovementService.Authorize:input_type -> AuthorizePayload
 	1, // 1: MoneyMovementService.Capture:input_type -> CapturePayload
-	2, // 2: MoneyMovementService.Authorize:output_type -> AuthorizeResponse
-	3, // 3: MoneyMovementService.Capture:output_type -> google.protobuf.Empty
-	2, // [2:4] is the sub-list for method output_type
-	0, // [0:2] is the sub-list for method input_type
+	3, // 2: MoneyMovementService.CheckBalance:input_type -> CheckBalancePayload
+	2, // 3: MoneyMovementService.Authorize:output_type -> AuthorizeResponse
+	5, // 4: MoneyMovementService.Capture:output_type -> google.protobuf.Empty
+	4, // 5: MoneyMovementService.CheckBalance:output_type -> CheckBalanceResponse
+	3, // [3:6] is the sub-list for method output_type
+	0, // [0:3] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
 }
 
-func init() { file_proto_money_movement_svc_proto_init() }
-func file_proto_money_movement_svc_proto_init() {
-	if File_proto_money_movement_svc_proto != nil {
+func init() { file_money_movement_proto_money_movement_svc_proto_init() }
+func file_money_movement_proto_money_movement_svc_proto_init() {
+	if File_money_movement_proto_money_movement_svc_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_money_movement_svc_proto_rawDesc), len(file_proto_money_movement_svc_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_money_movement_proto_money_movement_svc_proto_rawDesc), len(file_money_movement_proto_money_movement_svc_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_proto_money_movement_svc_proto_goTypes,
-		DependencyIndexes: file_proto_money_movement_svc_proto_depIdxs,
-		MessageInfos:      file_proto_money_movement_svc_proto_msgTypes,
+		GoTypes:           file_money_movement_proto_money_movement_svc_proto_goTypes,
+		DependencyIndexes: file_money_movement_proto_money_movement_svc_proto_depIdxs,
+		MessageInfos:      file_money_movement_proto_money_movement_svc_proto_msgTypes,
 	}.Build()
-	File_proto_money_movement_svc_proto = out.File
-	file_proto_money_movement_svc_proto_goTypes = nil
-	file_proto_money_movement_svc_proto_depIdxs = nil
+	File_money_movement_proto_money_movement_svc_proto = out.File
+	file_money_movement_proto_money_movement_svc_proto_goTypes = nil
+	file_money_movement_proto_money_movement_svc_proto_depIdxs = nil
 }

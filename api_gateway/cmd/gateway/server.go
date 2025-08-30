@@ -80,6 +80,7 @@ func main() {
 	http.HandleFunc("/login", login)
 	http.HandleFunc("/customer/payment/authorize", customerPaymentAuthorize)
 	http.HandleFunc("/customer/payment/capture", customerPaymentCapture)
+	http.HandleFunc("/checkbalance", checkBalance)
 
 	log.Println("API Gateway listening on port 8080")
 	err = http.ListenAndServe(":8080", nil)
@@ -115,6 +116,90 @@ func login(w http.ResponseWriter, r *http.Request) {
 	_, err = w.Write([]byte(token.Jwt))
 	if err != nil {
 		log.Println("Failed to write token:", err)
+	}
+}
+
+func checkBalance(w http.ResponseWriter, r *http.Request) {
+	logInfo("checkBalance called")
+	authHeader := r.Header.Get("Authorization")
+	logDebug("Authorization header: %s", authHeader)
+	if authHeader == "" {
+		logInfo("Missing Authorization header")
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	if !strings.HasPrefix(authHeader, "Bearer ") {
+		logInfo("Authorization header does not start with 'Bearer '")
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	token := strings.TrimPrefix(authHeader, "Bearer ")
+	logDebug("Extracted token: %s", token)
+	ctx := context.Background()
+	_, err := authClient.ValidateToken(ctx, &authpb.Token{Jwt: token})
+	if err != nil {
+		logInfo("Token validation failed: %v", err)
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	// Call money movement service
+	type checkBalancePayload struct {
+		WalletUserId string `json:"wallet_user_id"`
+	}
+
+	var payload checkBalancePayload
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("Failed to read request body: %v", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	logDebug("Request body: %s", string(body))
+	err = json.Unmarshal(body, &payload)
+	if err != nil {
+		logInfo("Failed to unmarshal payload: %v", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	logDebug("checkBalance payload: %+v", payload)
+	ctx = context.Background()
+	authorizedResponse, err := mmClient.CheckBalance(ctx, &mmpb.CheckBalancePayload{
+		UserId: payload.WalletUserId,
+	})
+	if err != nil {
+		logInfo("Check balance failed: %v", err)
+		_, writeErr := w.Write([]byte(err.Error()))
+		if writeErr != nil {
+			log.Println(writeErr)
+		}
+		return
+	}
+
+	logDebug("checkBalance response: %+v", authorizedResponse)
+	type response struct {
+		Cents int64 `json:"cents"`
+	}
+
+	resp := response{
+		Cents: authorizedResponse.BalanceCents,
+	}
+	responseJSON, err := json.Marshal(resp)
+	if err != nil {
+		logInfo("Failed to marshal response: %v", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	logInfo("Check balance succeeded")
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(responseJSON)
+	if err != nil {
+		logInfo("Failed to write response: %v", err)
 	}
 }
 
@@ -199,6 +284,7 @@ func customerPaymentAuthorize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
+	logInfo("Authorization succeeded")
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(responseJSON)
 	if err != nil {
