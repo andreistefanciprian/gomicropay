@@ -5,4 +5,5 @@ metadata:
 data:
   KAFKA_HOST: "my-cluster-kafka-bootstrap.kafka.svc.cluster.local"
   KAFKA_PORT: "9092"
-  LOG_LEVEL: "DEBUG" 
+  LOG_LEVEL: "DEBUG"
+  MONEY_MOVEMENT_PORT: "7000"
