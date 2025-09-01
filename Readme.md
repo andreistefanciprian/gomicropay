@@ -34,6 +34,29 @@ curl -X POST -H "Authorization: Bearer $JWT_TOKEN" -d "{\"wallet_user_id\": \"ci
 - Finally, the Money Movement service returns a confirmation back to the user indicating that the transaction was successful.
 
 
+## Local Development with Docker Compose
+
+Requirements:
+- Docker
+- Docker Compose
+
+```
+# Start all services
+docker compose up --build --remove-orphans
+
+# login, generate transaction and check balance
+bash test_transaction.sh
+
+# Connect to MySQL databases from another container in the same Docker network
+docker run -it --network gomicropay_default --rm mysql mysql -hmysql-money-movement -u root -p
+
+# Connect to MySQL databases from your laptop's CLI
+docker run -it --network host --rm mysql mysql -h127.0.0.1 -P 33062 -u root -p
+
+# Remove all services
+docker compose down --remove-orphans
+```
+
 ## Deploy, Test and Debug
 
 Requirements:
@@ -64,7 +87,7 @@ kubectl logs -l app=ledger -n ledger -f
 kubectl logs -l app=auth -n auth -f
 kubectl logs -l app=email -n email -f
 
-# generate transaction
+# login, generate transaction and check balance
 bash test_transaction.sh
 
 # Remove all services
