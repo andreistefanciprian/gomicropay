@@ -59,7 +59,7 @@ services:
         condition: service_healthy
         restart: true
       broker:
-        condition: service_started
+        condition: service_healthy
 
   ledger:
     image: andreistefanciprian/gomicropay-ledger:latest
@@ -80,7 +80,7 @@ services:
         condition: service_healthy
         restart: true
       broker:
-        condition: service_started
+        condition: service_healthy
 
   email:
     image: andreistefanciprian/gomicropay-email:latest
@@ -93,7 +93,7 @@ services:
       LOG_LEVEL: "DEBUG"
     depends_on:
       broker:
-        condition: service_started
+        condition: service_healthy
 
   broker:
     image: apache/kafka:latest
@@ -117,6 +117,16 @@ services:
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
       CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    healthcheck:
+      test: [
+        "CMD",
+        "sh",
+        "-c",
+        "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"
+      ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
 
   mysql-auth:
     image: mysql:8.0
@@ -125,7 +135,7 @@ services:
     ports:
     - "33061:3306"
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD", "mysql", "-h", "localhost", "-u", "root", "-pAdmin123","-e", "SELECT 1 FROM mysql.user WHERE user='auth_user';"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -139,7 +149,7 @@ services:
     ports:
       - "33062:3306"
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD", "mysql", "-h", "localhost", "-u", "root", "-pAdmin123","-e", "SELECT 1 FROM mysql.user WHERE user='money_movement_user';"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -153,7 +163,7 @@ services:
     ports:
       - "33063:3306"
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD", "mysql", "-h", "localhost", "-u", "root", "-pAdmin123","-e", "SELECT 1 FROM mysql.user WHERE user='ledger_user';"]
       interval: 10s
       timeout: 5s
       retries: 5
