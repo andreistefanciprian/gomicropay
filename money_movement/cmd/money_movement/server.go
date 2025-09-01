@@ -72,7 +72,8 @@ func main() {
 	grpcServer := grpc.NewServer()
 	pb.RegisterMoneyMovementServiceServer(grpcServer, mm.NewMoneyMovementImplementation(db, producer))
 	// listen and serve
-	listener, err := net.Listen("tcp", ":7000")
+	moneyMovementPort := os.Getenv("MONEY_MOVEMENT_PORT")
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%s", moneyMovementPort))
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}

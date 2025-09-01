@@ -1,0 +1,171 @@
+
+
+
+
+version: '3.8'
+services:
+  gateway:
+    image: andreistefanciprian/gomicropay-gateway:latest
+    build:
+      context: ./api_gateway
+      dockerfile: infra/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      MONEY_MOVEMENT_HOST: "money-movement"
+      MONEY_MOVEMENT_PORT: "7070"
+      AUTH_HOST: "auth"
+      AUTH_PORT: "9000"
+      LOG_LEVEL: "DEBUG"
+    depends_on:
+      auth:
+        condition: service_started
+  auth:
+    image: andreistefanciprian/gomicropay-auth:latest
+    build:
+      context: ./auth
+      dockerfile: infra/Dockerfile
+    ports:
+      - "9000:9000"
+    environment:
+      MYSQL_PASSWORD: "Auth123"
+      MYSQL_USER: "auth_user"
+      MYSQL_DB: "auth"
+      MYSQL_HOST: "mysql-auth"
+      MYSQL_PORT: "3306"
+    depends_on:
+      mysql-auth:
+        condition: service_healthy
+        restart: true
+  money-movement:
+    image: andreistefanciprian/gomicropay-money-movement:latest
+    build:
+      context: ./money_movement
+      dockerfile: infra/Dockerfile
+    ports:
+      - "7070:7070"
+    environment:
+      KAFKA_HOST: "broker"
+      KAFKA_PORT: "29092"
+      LOG_LEVEL: "DEBUG" 
+      MYSQL_PASSWORD: "Auth123"
+      MYSQL_USER: "money_movement_user"
+      MYSQL_DB: "money_movement"
+      MYSQL_HOST: "mysql-money-movement"
+      MYSQL_PORT: "3306"
+      MONEY_MOVEMENT_PORT: "7070"
+    depends_on:
+      mysql-money-movement:
+        condition: service_healthy
+        restart: true
+      broker:
+        condition: service_healthy
+
+  ledger:
+    image: andreistefanciprian/gomicropay-ledger:latest
+    build:
+      context: ./ledger
+      dockerfile: infra/Dockerfile
+    environment:
+      MYSQL_PASSWORD: "Auth123"
+      MYSQL_USER: "ledger_user"
+      MYSQL_DB: "ledger"
+      MYSQL_HOST: "mysql-ledger"
+      MYSQL_PORT: "3306"
+      KAFKA_HOST: "broker"
+      KAFKA_PORT: "29092"
+      LOG_LEVEL: "DEBUG"
+    depends_on:
+      mysql-ledger:
+        condition: service_healthy
+        restart: true
+      broker:
+        condition: service_healthy
+
+  email:
+    image: andreistefanciprian/gomicropay-email:latest
+    build:
+      context: ./email
+      dockerfile: infra/Dockerfile
+    environment:
+      KAFKA_HOST: "broker"
+      KAFKA_PORT: "29092"
+      LOG_LEVEL: "DEBUG"
+    depends_on:
+      broker:
+        condition: service_healthy
+
+  broker:
+    image: apache/kafka:latest
+    hostname: broker
+    container_name: broker
+    ports:
+      - 9092:9092
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_NODE_ID: 1
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@broker:29093
+      KAFKA_LISTENERS: PLAINTEXT://broker:29092,CONTROLLER://broker:29093,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    healthcheck:
+      test: [
+        "CMD",
+        "sh",
+        "-c",
+        "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"
+      ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  mysql-auth:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: Admin123
+    ports:
+    - "33061:3306"
+    healthcheck:
+      test: ["CMD", "mysql", "-h", "localhost", "-u", "root", "-pAdmin123","-e", "SELECT 1 FROM mysql.user WHERE user='auth_user';"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - ./auth/infra/k8s/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  mysql-money-movement:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: Admin123
+    ports:
+      - "33062:3306"
+    healthcheck:
+      test: ["CMD", "mysql", "-h", "localhost", "-u", "root", "-pAdmin123","-e", "SELECT 1 FROM mysql.user WHERE user='money_movement_user';"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - ./money_movement/infra/k8s/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  mysql-ledger:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: Admin123
+    ports:
+      - "33063:3306"
+    healthcheck:
+      test: ["CMD", "mysql", "-h", "localhost", "-u", "root", "-pAdmin123","-e", "SELECT 1 FROM mysql.user WHERE user='ledger_user';"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - ./ledger/infra/k8s/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
