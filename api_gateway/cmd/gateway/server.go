@@ -13,7 +13,9 @@ import (
 	authpb "github.com/andreistefanciprian/gomicropay/api_gateway/auth"
 	mmpb "github.com/andreistefanciprian/gomicropay/api_gateway/money_movement"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 )
 
 var mmClient mmpb.MoneyMovementServiceClient
@@ -121,26 +123,12 @@ func login(w http.ResponseWriter, r *http.Request) {
 
 func checkBalance(w http.ResponseWriter, r *http.Request) {
 	logInfo("checkBalance called")
-	authHeader := r.Header.Get("Authorization")
-	logDebug("Authorization header: %s", authHeader)
-	if authHeader == "" {
-		logInfo("Missing Authorization header")
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		return
-	}
 
-	if !strings.HasPrefix(authHeader, "Bearer ") {
-		logInfo("Authorization header does not start with 'Bearer '")
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		return
-	}
-
-	token := strings.TrimPrefix(authHeader, "Bearer ")
-	logDebug("Extracted token: %s", token)
+	// Check user has valid JWT Token in Authorisation Header
 	ctx := context.Background()
-	_, err := authClient.ValidateToken(ctx, &authpb.Token{Jwt: token})
+	err := checkAuthHeader(ctx, r)
 	if err != nil {
-		logInfo("Token validation failed: %v", err)
+		logInfo("Authorization failed: %v", err)
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
@@ -205,26 +193,12 @@ func checkBalance(w http.ResponseWriter, r *http.Request) {
 
 func customerPaymentAuthorize(w http.ResponseWriter, r *http.Request) {
 	logInfo("customerPaymentAuthorize called")
-	authHeader := r.Header.Get("Authorization")
-	logDebug("Authorization header: %s", authHeader)
-	if authHeader == "" {
-		logInfo("Missing Authorization header")
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		return
-	}
 
-	if !strings.HasPrefix(authHeader, "Bearer ") {
-		logInfo("Authorization header does not start with 'Bearer '")
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		return
-	}
-
-	token := strings.TrimPrefix(authHeader, "Bearer ")
-	logDebug("Extracted token: %s", token)
+	// Check user has valid JWT Token in Authorisation Header
 	ctx := context.Background()
-	_, err := authClient.ValidateToken(ctx, &authpb.Token{Jwt: token})
+	err := checkAuthHeader(ctx, r)
 	if err != nil {
-		logInfo("Token validation failed: %v", err)
+		logInfo("Authorization failed: %v", err)
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
@@ -294,26 +268,12 @@ func customerPaymentAuthorize(w http.ResponseWriter, r *http.Request) {
 
 func customerPaymentCapture(w http.ResponseWriter, r *http.Request) {
 	logInfo("customerPaymentCapture handler called")
-	authHeader := r.Header.Get("Authorization")
-	logDebug("Authorization header: %s", authHeader)
-	if authHeader == "" {
-		logInfo("Missing Authorization header")
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		return
-	}
 
-	if !strings.HasPrefix(authHeader, "Bearer ") {
-		logInfo("Authorization header does not start with 'Bearer '")
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		return
-	}
-
-	token := strings.TrimPrefix(authHeader, "Bearer ")
-	logDebug("Extracted token: %s", token)
+	// Check user has valid JWT Token in Authorisation Header
 	ctx := context.Background()
-	_, err := authClient.ValidateToken(ctx, &authpb.Token{Jwt: token})
+	err := checkAuthHeader(ctx, r)
 	if err != nil {
-		logInfo("Token validation failed: %v", err)
+		logInfo("Authorization failed: %v", err)
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
@@ -352,4 +312,27 @@ func customerPaymentCapture(w http.ResponseWriter, r *http.Request) {
 	}
 	logInfo("Capture succeeded")
 	w.WriteHeader(http.StatusOK)
+}
+
+func checkAuthHeader(context context.Context, r *http.Request) error {
+	authHeader := r.Header.Get("Authorization")
+	logDebug("Authorization header: %s", authHeader)
+	if authHeader == "" {
+		logInfo("Missing Authorization header")
+		return status.Error(codes.Unauthenticated, "missing Authorization header")
+	}
+
+	if !strings.HasPrefix(authHeader, "Bearer ") {
+		logInfo("Authorization header does not start with 'Bearer '")
+		return status.Error(codes.Unauthenticated, "invalid Authorization header")
+	}
+
+	token := strings.TrimPrefix(authHeader, "Bearer ")
+	logDebug("Extracted token: %s", token)
+	_, err := authClient.ValidateToken(context, &authpb.Token{Jwt: token})
+	if err != nil {
+		logInfo("Token validation failed: %v", err)
+		return status.Error(codes.Unauthenticated, "invalid token")
+	}
+	return nil
 }
