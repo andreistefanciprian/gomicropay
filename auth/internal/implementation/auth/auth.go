@@ -116,43 +116,21 @@ func (i *Implementation) RegisterUser(ctx context.Context, in *pb.UserRegistrati
 	return &pb.UserRegistrationResponse{IsRegistered: true}, nil
 }
 
-func (i *Implementation) GetToken(ctx context.Context, credentials *pb.Credentials) (*pb.Token, error) {
-	type user struct {
-		userID   string
-		password string
-	}
-
-	var u user
-
-	stmt, err := i.db.Prepare("SELECT user_id, password FROM `user` WHERE user_id = ? AND password = ?")
-	if err != nil {
-		log.Println(err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	defer stmt.Close()
-
-	err = stmt.QueryRow(credentials.GetUserName(), credentials.GetPassword()).Scan(&u.userID, &u.password)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, status.Error(codes.Unauthenticated, "invalid credentials")
-		}
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	jwToken, err := createJWT(u.userID)
+func (i *Implementation) GenerateToken(ctx context.Context, email *pb.UserEmailAddress) (*pb.Token, error) {
+	jwToken, err := createJWT(email.GetUserEmail())
 	if err != nil {
 		return nil, err
 	}
 	return &pb.Token{Jwt: jwToken}, nil
 }
 
-func (i *Implementation) ValidateToken(ctx context.Context, token *pb.Token) (*pb.User, error) {
+func (i *Implementation) VerifyToken(ctx context.Context, token *pb.Token) (*pb.UserEmailAddress, error) {
 	key := []byte(os.Getenv("SIGNING_KEY"))
-	userID, err := validateJWT(token.Jwt, key)
+	emailAddress, err := validateJWT(token.Jwt, key)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.User{UserId: userID}, nil
+	return &pb.UserEmailAddress{UserEmail: emailAddress}, nil
 }
 
 func validateJWT(tokenString string, signingKey []byte) (string, error) {
@@ -177,11 +155,11 @@ func validateJWT(tokenString string, signingKey []byte) (string, error) {
 	return claims.Subject, nil
 }
 
-func createJWT(userID string) (string, error) {
+func createJWT(emailAddress string) (string, error) {
 	key := []byte(os.Getenv("SIGNING_KEY"))
 	claims := jwt.MapClaims{
 		"iss": "auth-service",
-		"sub": userID,
+		"sub": emailAddress,
 		"iat": time.Now().Unix(),
 		"exp": time.Now().Add(time.Hour * 24).Unix(),
 		// You can add more claims here, like expiration, etc.

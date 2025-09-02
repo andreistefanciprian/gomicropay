@@ -186,29 +186,67 @@ func register(w http.ResponseWriter, r *http.Request) {
 }
 
 func login(w http.ResponseWriter, r *http.Request) {
-	logInfo("login handler called")
-	username, password, ok := r.BasicAuth()
-	logDebug("BasicAuth username: %s", username)
-	if !ok {
-		logInfo("BasicAuth failed: missing or invalid credentials")
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+	logInfo("userLogin handler called")
+
+	var req struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		logInfo("Failed to decode JSON body: %v", err)
+		http.Error(w, "Failed to decode JSON body", http.StatusBadRequest)
 		return
 	}
 
-	ctx := context.Background()
-	token, err := authClient.GetToken(ctx, &authpb.Credentials{
-		UserName: username,
-		Password: password,
-	})
+	// Verify Blank fields
+	if req.Email == "" || req.Password == "" {
+		logInfo("One or more required fields are blank")
+		http.Error(w, "All fields are required", http.StatusBadRequest)
+		return
+	}
+
+	//  Check if user exists
+	userExistsResp, err := authClient.CheckUserExists(context.Background(), &authpb.UserEmailAddress{UserEmail: req.Email})
 	if err != nil {
-		logInfo("GetToken failed: %v", err)
+		logInfo("Failed to check if user exists: %v", err)
+		http.Error(w, "Failed to check if user exists", http.StatusInternalServerError)
+		return
+	}
+	if !userExistsResp.IsUser {
+		logInfo("User is not registered: %s", req.Email)
+		http.Error(w, "User is not registered", http.StatusConflict)
+		return
+	}
+
+	// Get password hash from auth service
+	hashedPassword, err := authClient.RetrieveHashedPassword(context.Background(), &authpb.UserEmailAddress{UserEmail: req.Email})
+	if err != nil {
+		logInfo("Failed to retrieve hashed password: %v", err)
+		http.Error(w, "Failed to retrieve hashed password", http.StatusInternalServerError)
+		return
+	}
+
+	// Check password is valid
+	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword.HashedPassword), []byte(req.Password)); err != nil {
+		logInfo("Invalid password for user %s: %v", req.Email, err)
+		http.Error(w, "Invalid password", http.StatusUnauthorized)
+		return
+	}
+
+	// Generate JWT token
+	ctx := context.Background()
+	token, err := authClient.GenerateToken(ctx, &authpb.UserEmailAddress{UserEmail: req.Email})
+	if err != nil {
+		logInfo("GenerateToken failed: %v", err)
 		_, writeErr := w.Write([]byte(err.Error()))
 		if writeErr != nil {
 			log.Println(writeErr)
 		}
 		return
 	}
-	logDebug("Token generated for user %s: %s", username, token.Jwt)
+	logDebug("Token generated for user %s: %s", req.Email, token.Jwt)
+	logInfo("User logged in successfully: %s", req.Email)
 	_, err = w.Write([]byte(token.Jwt))
 	if err != nil {
 		log.Println("Failed to write token:", err)
@@ -423,9 +461,9 @@ func checkAuthHeader(context context.Context, r *http.Request) error {
 
 	token := strings.TrimPrefix(authHeader, "Bearer ")
 	logDebug("Extracted token: %s", token)
-	_, err := authClient.ValidateToken(context, &authpb.Token{Jwt: token})
+	_, err := authClient.VerifyToken(context, &authpb.Token{Jwt: token})
 	if err != nil {
-		logInfo("Token validation failed: %v", err)
+		logInfo("Token verification failed: %v", err)
 		return status.Error(codes.Unauthenticated, "invalid token")
 	}
 	return nil

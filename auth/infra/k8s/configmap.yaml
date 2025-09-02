@@ -4,3 +4,4 @@ metadata:
   name: auth-configmap
 data:
   LOG_LEVEL: "DEBUG"
+  AUTH_SERVICE_PORT: "9000"
