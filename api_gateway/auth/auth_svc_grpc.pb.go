@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v4.23.4
-// source: proto/auth_svc.proto
+// source: auth/proto/auth_svc.proto
 
 package pb
 
@@ -19,8 +19,11 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AuthService_GetToken_FullMethodName      = "/AuthService/GetToken"
-	AuthService_ValidateToken_FullMethodName = "/AuthService/ValidateToken"
+	AuthService_GetToken_FullMethodName               = "/AuthService/GetToken"
+	AuthService_ValidateToken_FullMethodName          = "/AuthService/ValidateToken"
+	AuthService_RetrieveHashedPassword_FullMethodName = "/AuthService/RetrieveHashedPassword"
+	AuthService_CheckUserExists_FullMethodName        = "/AuthService/CheckUserExists"
+	AuthService_RegisterUser_FullMethodName           = "/AuthService/RegisterUser"
 )
 
 // AuthServiceClient is the client API for AuthService service.
@@ -29,6 +32,9 @@ const (
 type AuthServiceClient interface {
 	GetToken(ctx context.Context, in *Credentials, opts ...grpc.CallOption) (*Token, error)
 	ValidateToken(ctx context.Context, in *Token, opts ...grpc.CallOption) (*User, error)
+	RetrieveHashedPassword(ctx context.Context, in *UserEmailAddress, opts ...grpc.CallOption) (*HashedPassword, error)
+	CheckUserExists(ctx context.Context, in *UserEmailAddress, opts ...grpc.CallOption) (*UserExistsResponse, error)
+	RegisterUser(ctx context.Context, in *UserRegistrationForm, opts ...grpc.CallOption) (*UserRegistrationResponse, error)
 }
 
 type authServiceClient struct {
@@ -59,12 +65,45 @@ func (c *authServiceClient) ValidateToken(ctx context.Context, in *Token, opts .
 	return out, nil
 }
 
+func (c *authServiceClient) RetrieveHashedPassword(ctx context.Context, in *UserEmailAddress, opts ...grpc.CallOption) (*HashedPassword, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(HashedPassword)
+	err := c.cc.Invoke(ctx, AuthService_RetrieveHashedPassword_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) CheckUserExists(ctx context.Context, in *UserEmailAddress, opts ...grpc.CallOption) (*UserExistsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UserExistsResponse)
+	err := c.cc.Invoke(ctx, AuthService_CheckUserExists_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) RegisterUser(ctx context.Context, in *UserRegistrationForm, opts ...grpc.CallOption) (*UserRegistrationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UserRegistrationResponse)
+	err := c.cc.Invoke(ctx, AuthService_RegisterUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AuthServiceServer is the server API for AuthService service.
 // All implementations must embed UnimplementedAuthServiceServer
 // for forward compatibility.
 type AuthServiceServer interface {
 	GetToken(context.Context, *Credentials) (*Token, error)
 	ValidateToken(context.Context, *Token) (*User, error)
+	RetrieveHashedPassword(context.Context, *UserEmailAddress) (*HashedPassword, error)
+	CheckUserExists(context.Context, *UserEmailAddress) (*UserExistsResponse, error)
+	RegisterUser(context.Context, *UserRegistrationForm) (*UserRegistrationResponse, error)
 	mustEmbedUnimplementedAuthServiceServer()
 }
 
@@ -80,6 +119,15 @@ func (UnimplementedAuthServiceServer) GetToken(context.Context, *Credentials) (*
 }
 func (UnimplementedAuthServiceServer) ValidateToken(context.Context, *Token) (*User, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ValidateToken not implemented")
+}
+func (UnimplementedAuthServiceServer) RetrieveHashedPassword(context.Context, *UserEmailAddress) (*HashedPassword, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RetrieveHashedPassword not implemented")
+}
+func (UnimplementedAuthServiceServer) CheckUserExists(context.Context, *UserEmailAddress) (*UserExistsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CheckUserExists not implemented")
+}
+func (UnimplementedAuthServiceServer) RegisterUser(context.Context, *UserRegistrationForm) (*UserRegistrationResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RegisterUser not implemented")
 }
 func (UnimplementedAuthServiceServer) mustEmbedUnimplementedAuthServiceServer() {}
 func (UnimplementedAuthServiceServer) testEmbeddedByValue()                     {}
@@ -138,6 +186,60 @@ func _AuthService_ValidateToken_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AuthService_RetrieveHashedPassword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UserEmailAddress)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).RetrieveHashedPassword(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_RetrieveHashedPassword_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).RetrieveHashedPassword(ctx, req.(*UserEmailAddress))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_CheckUserExists_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UserEmailAddress)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).CheckUserExists(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_CheckUserExists_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).CheckUserExists(ctx, req.(*UserEmailAddress))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_RegisterUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UserRegistrationForm)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).RegisterUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_RegisterUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).RegisterUser(ctx, req.(*UserRegistrationForm))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AuthService_ServiceDesc is the grpc.ServiceDesc for AuthService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -153,7 +255,19 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "ValidateToken",
 			Handler:    _AuthService_ValidateToken_Handler,
 		},
+		{
+			MethodName: "RetrieveHashedPassword",
+			Handler:    _AuthService_RetrieveHashedPassword_Handler,
+		},
+		{
+			MethodName: "CheckUserExists",
+			Handler:    _AuthService_CheckUserExists_Handler,
+		},
+		{
+			MethodName: "RegisterUser",
+			Handler:    _AuthService_RegisterUser_Handler,
+		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "proto/auth_svc.proto",
+	Metadata: "auth/proto/auth_svc.proto",
 }
