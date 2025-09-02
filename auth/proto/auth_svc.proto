@@ -3,19 +3,36 @@ syntax = "proto3";
 option go_package = "github.com/andreistefanciprian/gomicropay/auth/proto/pb";
 
 service AuthService {
-    rpc GetToken(Credentials) returns (Token) {}
-    rpc ValidateToken(Token) returns (User) {}
+    rpc RetrieveHashedPassword(UserEmailAddress) returns (HashedPassword) {}
+    rpc CheckUserExists(UserEmailAddress) returns (UserExistsResponse) {}
+    rpc RegisterUser(UserRegistrationForm) returns (UserRegistrationResponse) {}
+    rpc GenerateToken(UserEmailAddress) returns (Token) {}
+    rpc VerifyToken(Token) returns (UserEmailAddress) {}
 }
 
 message Token {
     string jwt = 1;
 }
 
-message Credentials {
-    string userName = 1;
-    string password = 2;
+message UserEmailAddress {
+    string userEmail = 1;
 }
 
-message User {
-    string userId = 1;
+message HashedPassword {
+    string hashedPassword = 1;
 }
+
+message UserExistsResponse {
+    bool isUser = 1;
+}
+
+message UserRegistrationForm {
+    string firstName = 1;
+    string lastName = 2;
+    string userEmail = 3;
+    string passwordHash = 4;
+}
+
+message UserRegistrationResponse {
+    bool isRegistered = 1;
+}   

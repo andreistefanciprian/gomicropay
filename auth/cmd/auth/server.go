@@ -56,7 +56,8 @@ func main() {
 	pb.RegisterAuthServiceServer(grpcServer, authServerImplementation)
 
 	// listen and serve
-	listener, err := net.Listen("tcp", ":9000")
+	authPort := os.Getenv("AUTH_SERVICE_PORT")
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%s", authPort))
 	if err := grpcServer.Serve(listener); err != nil {
 		log.Fatalf("Failed to serve gRPC server: %v", err)
 	}

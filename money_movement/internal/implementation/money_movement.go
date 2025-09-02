@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 
 	"github.com/IBM/sarama"
 	"github.com/andreistefanciprian/gomicropay/money_movement/internal/producer"
@@ -22,19 +21,19 @@ var logLevel = getLogLevel()
 func getLogLevel() string {
 	lvl := os.Getenv("LOG_LEVEL")
 	if lvl == "" {
-		return "info"
+		return "INFO"
 	}
-	return strings.ToLower(lvl)
+	return lvl
 }
 
 func logInfo(format string, v ...interface{}) {
-	if logLevel == "info" || logLevel == "debug" {
+	if logLevel == "INFO" || logLevel == "DEBUG" {
 		log.Printf("INFO: "+format, v...)
 	}
 }
 
 func logDebug(format string, v ...interface{}) {
-	if logLevel == "debug" {
+	if logLevel == "DEBUG" {
 		log.Printf("DEBUG: "+format, v...)
 	}
 }

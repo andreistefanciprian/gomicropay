@@ -19,16 +19,22 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AuthService_GetToken_FullMethodName      = "/AuthService/GetToken"
-	AuthService_ValidateToken_FullMethodName = "/AuthService/ValidateToken"
+	AuthService_RetrieveHashedPassword_FullMethodName = "/AuthService/RetrieveHashedPassword"
+	AuthService_CheckUserExists_FullMethodName        = "/AuthService/CheckUserExists"
+	AuthService_RegisterUser_FullMethodName           = "/AuthService/RegisterUser"
+	AuthService_GenerateToken_FullMethodName          = "/AuthService/GenerateToken"
+	AuthService_VerifyToken_FullMethodName            = "/AuthService/VerifyToken"
 )
 
 // AuthServiceClient is the client API for AuthService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AuthServiceClient interface {
-	GetToken(ctx context.Context, in *Credentials, opts ...grpc.CallOption) (*Token, error)
-	ValidateToken(ctx context.Context, in *Token, opts ...grpc.CallOption) (*User, error)
+	RetrieveHashedPassword(ctx context.Context, in *UserEmailAddress, opts ...grpc.CallOption) (*HashedPassword, error)
+	CheckUserExists(ctx context.Context, in *UserEmailAddress, opts ...grpc.CallOption) (*UserExistsResponse, error)
+	RegisterUser(ctx context.Context, in *UserRegistrationForm, opts ...grpc.CallOption) (*UserRegistrationResponse, error)
+	GenerateToken(ctx context.Context, in *UserEmailAddress, opts ...grpc.CallOption) (*Token, error)
+	VerifyToken(ctx context.Context, in *Token, opts ...grpc.CallOption) (*UserEmailAddress, error)
 }
 
 type authServiceClient struct {
@@ -39,20 +45,50 @@ func NewAuthServiceClient(cc grpc.ClientConnInterface) AuthServiceClient {
 	return &authServiceClient{cc}
 }
 
-func (c *authServiceClient) GetToken(ctx context.Context, in *Credentials, opts ...grpc.CallOption) (*Token, error) {
+func (c *authServiceClient) RetrieveHashedPassword(ctx context.Context, in *UserEmailAddress, opts ...grpc.CallOption) (*HashedPassword, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Token)
-	err := c.cc.Invoke(ctx, AuthService_GetToken_FullMethodName, in, out, cOpts...)
+	out := new(HashedPassword)
+	err := c.cc.Invoke(ctx, AuthService_RetrieveHashedPassword_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *authServiceClient) ValidateToken(ctx context.Context, in *Token, opts ...grpc.CallOption) (*User, error) {
+func (c *authServiceClient) CheckUserExists(ctx context.Context, in *UserEmailAddress, opts ...grpc.CallOption) (*UserExistsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(User)
-	err := c.cc.Invoke(ctx, AuthService_ValidateToken_FullMethodName, in, out, cOpts...)
+	out := new(UserExistsResponse)
+	err := c.cc.Invoke(ctx, AuthService_CheckUserExists_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) RegisterUser(ctx context.Context, in *UserRegistrationForm, opts ...grpc.CallOption) (*UserRegistrationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UserRegistrationResponse)
+	err := c.cc.Invoke(ctx, AuthService_RegisterUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) GenerateToken(ctx context.Context, in *UserEmailAddress, opts ...grpc.CallOption) (*Token, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Token)
+	err := c.cc.Invoke(ctx, AuthService_GenerateToken_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) VerifyToken(ctx context.Context, in *Token, opts ...grpc.CallOption) (*UserEmailAddress, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UserEmailAddress)
+	err := c.cc.Invoke(ctx, AuthService_VerifyToken_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -63,8 +99,11 @@ func (c *authServiceClient) ValidateToken(ctx context.Context, in *Token, opts .
 // All implementations must embed UnimplementedAuthServiceServer
 // for forward compatibility.
 type AuthServiceServer interface {
-	GetToken(context.Context, *Credentials) (*Token, error)
-	ValidateToken(context.Context, *Token) (*User, error)
+	RetrieveHashedPassword(context.Context, *UserEmailAddress) (*HashedPassword, error)
+	CheckUserExists(context.Context, *UserEmailAddress) (*UserExistsResponse, error)
+	RegisterUser(context.Context, *UserRegistrationForm) (*UserRegistrationResponse, error)
+	GenerateToken(context.Context, *UserEmailAddress) (*Token, error)
+	VerifyToken(context.Context, *Token) (*UserEmailAddress, error)
 	mustEmbedUnimplementedAuthServiceServer()
 }
 
@@ -75,11 +114,20 @@ type AuthServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedAuthServiceServer struct{}
 
-func (UnimplementedAuthServiceServer) GetToken(context.Context, *Credentials) (*Token, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetToken not implemented")
+func (UnimplementedAuthServiceServer) RetrieveHashedPassword(context.Context, *UserEmailAddress) (*HashedPassword, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RetrieveHashedPassword not implemented")
 }
-func (UnimplementedAuthServiceServer) ValidateToken(context.Context, *Token) (*User, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ValidateToken not implemented")
+func (UnimplementedAuthServiceServer) CheckUserExists(context.Context, *UserEmailAddress) (*UserExistsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CheckUserExists not implemented")
+}
+func (UnimplementedAuthServiceServer) RegisterUser(context.Context, *UserRegistrationForm) (*UserRegistrationResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RegisterUser not implemented")
+}
+func (UnimplementedAuthServiceServer) GenerateToken(context.Context, *UserEmailAddress) (*Token, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GenerateToken not implemented")
+}
+func (UnimplementedAuthServiceServer) VerifyToken(context.Context, *Token) (*UserEmailAddress, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method VerifyToken not implemented")
 }
 func (UnimplementedAuthServiceServer) mustEmbedUnimplementedAuthServiceServer() {}
 func (UnimplementedAuthServiceServer) testEmbeddedByValue()                     {}
@@ -102,38 +150,92 @@ func RegisterAuthServiceServer(s grpc.ServiceRegistrar, srv AuthServiceServer) {
 	s.RegisterService(&AuthService_ServiceDesc, srv)
 }
 
-func _AuthService_GetToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Credentials)
+func _AuthService_RetrieveHashedPassword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UserEmailAddress)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AuthServiceServer).GetToken(ctx, in)
+		return srv.(AuthServiceServer).RetrieveHashedPassword(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: AuthService_GetToken_FullMethodName,
+		FullMethod: AuthService_RetrieveHashedPassword_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthServiceServer).GetToken(ctx, req.(*Credentials))
+		return srv.(AuthServiceServer).RetrieveHashedPassword(ctx, req.(*UserEmailAddress))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AuthService_ValidateToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _AuthService_CheckUserExists_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UserEmailAddress)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).CheckUserExists(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_CheckUserExists_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).CheckUserExists(ctx, req.(*UserEmailAddress))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_RegisterUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UserRegistrationForm)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).RegisterUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_RegisterUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).RegisterUser(ctx, req.(*UserRegistrationForm))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_GenerateToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UserEmailAddress)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).GenerateToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_GenerateToken_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).GenerateToken(ctx, req.(*UserEmailAddress))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_VerifyToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Token)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AuthServiceServer).ValidateToken(ctx, in)
+		return srv.(AuthServiceServer).VerifyToken(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: AuthService_ValidateToken_FullMethodName,
+		FullMethod: AuthService_VerifyToken_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthServiceServer).ValidateToken(ctx, req.(*Token))
+		return srv.(AuthServiceServer).VerifyToken(ctx, req.(*Token))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -146,12 +248,24 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*AuthServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "GetToken",
-			Handler:    _AuthService_GetToken_Handler,
+			MethodName: "RetrieveHashedPassword",
+			Handler:    _AuthService_RetrieveHashedPassword_Handler,
 		},
 		{
-			MethodName: "ValidateToken",
-			Handler:    _AuthService_ValidateToken_Handler,
+			MethodName: "CheckUserExists",
+			Handler:    _AuthService_CheckUserExists_Handler,
+		},
+		{
+			MethodName: "RegisterUser",
+			Handler:    _AuthService_RegisterUser_Handler,
+		},
+		{
+			MethodName: "GenerateToken",
+			Handler:    _AuthService_GenerateToken_Handler,
+		},
+		{
+			MethodName: "VerifyToken",
+			Handler:    _AuthService_VerifyToken_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

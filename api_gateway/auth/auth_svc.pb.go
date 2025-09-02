@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.8
 // 	protoc        v4.23.4
-// source: proto/auth_svc.proto
+// source: auth/proto/auth_svc.proto
 
 package pb
 
@@ -30,7 +30,7 @@ type Token struct {
 
 func (x *Token) Reset() {
 	*x = Token{}
-	mi := &file_proto_auth_svc_proto_msgTypes[0]
+	mi := &file_auth_proto_auth_svc_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -42,7 +42,7 @@ func (x *Token) String() string {
 func (*Token) ProtoMessage() {}
 
 func (x *Token) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_auth_svc_proto_msgTypes[0]
+	mi := &file_auth_proto_auth_svc_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -55,7 +55,7 @@ func (x *Token) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Token.ProtoReflect.Descriptor instead.
 func (*Token) Descriptor() ([]byte, []int) {
-	return file_proto_auth_svc_proto_rawDescGZIP(), []int{0}
+	return file_auth_proto_auth_svc_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *Token) GetJwt() string {
@@ -65,29 +65,28 @@ func (x *Token) GetJwt() string {
 	return ""
 }
 
-type Credentials struct {
+type UserEmailAddress struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserName      string                 `protobuf:"bytes,1,opt,name=userName,proto3" json:"userName,omitempty"`
-	Password      string                 `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
+	UserEmail     string                 `protobuf:"bytes,1,opt,name=userEmail,proto3" json:"userEmail,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *Credentials) Reset() {
-	*x = Credentials{}
-	mi := &file_proto_auth_svc_proto_msgTypes[1]
+func (x *UserEmailAddress) Reset() {
+	*x = UserEmailAddress{}
+	mi := &file_auth_proto_auth_svc_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *Credentials) String() string {
+func (x *UserEmailAddress) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Credentials) ProtoMessage() {}
+func (*UserEmailAddress) ProtoMessage() {}
 
-func (x *Credentials) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_auth_svc_proto_msgTypes[1]
+func (x *UserEmailAddress) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_proto_auth_svc_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -98,47 +97,40 @@ func (x *Credentials) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Credentials.ProtoReflect.Descriptor instead.
-func (*Credentials) Descriptor() ([]byte, []int) {
-	return file_proto_auth_svc_proto_rawDescGZIP(), []int{1}
+// Deprecated: Use UserEmailAddress.ProtoReflect.Descriptor instead.
+func (*UserEmailAddress) Descriptor() ([]byte, []int) {
+	return file_auth_proto_auth_svc_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *Credentials) GetUserName() string {
+func (x *UserEmailAddress) GetUserEmail() string {
 	if x != nil {
-		return x.UserName
+		return x.UserEmail
 	}
 	return ""
 }
 
-func (x *Credentials) GetPassword() string {
-	if x != nil {
-		return x.Password
-	}
-	return ""
+type HashedPassword struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	HashedPassword string                 `protobuf:"bytes,1,opt,name=hashedPassword,proto3" json:"hashedPassword,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
-type User struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=userId,proto3" json:"userId,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *User) Reset() {
-	*x = User{}
-	mi := &file_proto_auth_svc_proto_msgTypes[2]
+func (x *HashedPassword) Reset() {
+	*x = HashedPassword{}
+	mi := &file_auth_proto_auth_svc_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *User) String() string {
+func (x *HashedPassword) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*User) ProtoMessage() {}
+func (*HashedPassword) ProtoMessage() {}
 
-func (x *User) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_auth_svc_proto_msgTypes[2]
+func (x *HashedPassword) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_proto_auth_svc_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -149,84 +141,260 @@ func (x *User) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use User.ProtoReflect.Descriptor instead.
-func (*User) Descriptor() ([]byte, []int) {
-	return file_proto_auth_svc_proto_rawDescGZIP(), []int{2}
+// Deprecated: Use HashedPassword.ProtoReflect.Descriptor instead.
+func (*HashedPassword) Descriptor() ([]byte, []int) {
+	return file_auth_proto_auth_svc_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *User) GetUserId() string {
+func (x *HashedPassword) GetHashedPassword() string {
 	if x != nil {
-		return x.UserId
+		return x.HashedPassword
 	}
 	return ""
 }
 
-var File_proto_auth_svc_proto protoreflect.FileDescriptor
+type UserExistsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	IsUser        bool                   `protobuf:"varint,1,opt,name=isUser,proto3" json:"isUser,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
 
-const file_proto_auth_svc_proto_rawDesc = "" +
+func (x *UserExistsResponse) Reset() {
+	*x = UserExistsResponse{}
+	mi := &file_auth_proto_auth_svc_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UserExistsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UserExistsResponse) ProtoMessage() {}
+
+func (x *UserExistsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_proto_auth_svc_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UserExistsResponse.ProtoReflect.Descriptor instead.
+func (*UserExistsResponse) Descriptor() ([]byte, []int) {
+	return file_auth_proto_auth_svc_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *UserExistsResponse) GetIsUser() bool {
+	if x != nil {
+		return x.IsUser
+	}
+	return false
+}
+
+type UserRegistrationForm struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	FirstName     string                 `protobuf:"bytes,1,opt,name=firstName,proto3" json:"firstName,omitempty"`
+	LastName      string                 `protobuf:"bytes,2,opt,name=lastName,proto3" json:"lastName,omitempty"`
+	UserEmail     string                 `protobuf:"bytes,3,opt,name=userEmail,proto3" json:"userEmail,omitempty"`
+	PasswordHash  string                 `protobuf:"bytes,4,opt,name=passwordHash,proto3" json:"passwordHash,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UserRegistrationForm) Reset() {
+	*x = UserRegistrationForm{}
+	mi := &file_auth_proto_auth_svc_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UserRegistrationForm) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UserRegistrationForm) ProtoMessage() {}
+
+func (x *UserRegistrationForm) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_proto_auth_svc_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UserRegistrationForm.ProtoReflect.Descriptor instead.
+func (*UserRegistrationForm) Descriptor() ([]byte, []int) {
+	return file_auth_proto_auth_svc_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *UserRegistrationForm) GetFirstName() string {
+	if x != nil {
+		return x.FirstName
+	}
+	return ""
+}
+
+func (x *UserRegistrationForm) GetLastName() string {
+	if x != nil {
+		return x.LastName
+	}
+	return ""
+}
+
+func (x *UserRegistrationForm) GetUserEmail() string {
+	if x != nil {
+		return x.UserEmail
+	}
+	return ""
+}
+
+func (x *UserRegistrationForm) GetPasswordHash() string {
+	if x != nil {
+		return x.PasswordHash
+	}
+	return ""
+}
+
+type UserRegistrationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	IsRegistered  bool                   `protobuf:"varint,1,opt,name=isRegistered,proto3" json:"isRegistered,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UserRegistrationResponse) Reset() {
+	*x = UserRegistrationResponse{}
+	mi := &file_auth_proto_auth_svc_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UserRegistrationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UserRegistrationResponse) ProtoMessage() {}
+
+func (x *UserRegistrationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_proto_auth_svc_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UserRegistrationResponse.ProtoReflect.Descriptor instead.
+func (*UserRegistrationResponse) Descriptor() ([]byte, []int) {
+	return file_auth_proto_auth_svc_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *UserRegistrationResponse) GetIsRegistered() bool {
+	if x != nil {
+		return x.IsRegistered
+	}
+	return false
+}
+
+var File_auth_proto_auth_svc_proto protoreflect.FileDescriptor
+
+const file_auth_proto_auth_svc_proto_rawDesc = "" +
 	"\n" +
-	"\x14proto/auth_svc.proto\"\x19\n" +
+	"\x19auth/proto/auth_svc.proto\"\x19\n" +
 	"\x05Token\x12\x10\n" +
-	"\x03jwt\x18\x01 \x01(\tR\x03jwt\"E\n" +
-	"\vCredentials\x12\x1a\n" +
-	"\buserName\x18\x01 \x01(\tR\buserName\x12\x1a\n" +
-	"\bpassword\x18\x02 \x01(\tR\bpassword\"\x1e\n" +
-	"\x04User\x12\x16\n" +
-	"\x06userId\x18\x01 \x01(\tR\x06userId2S\n" +
-	"\vAuthService\x12\"\n" +
-	"\bGetToken\x12\f.Credentials\x1a\x06.Token\"\x00\x12 \n" +
-	"\rValidateToken\x12\x06.Token\x1a\x05.User\"\x00B9Z7github.com/andreistefanciprian/gomicropay/auth/proto/pbb\x06proto3"
+	"\x03jwt\x18\x01 \x01(\tR\x03jwt\"0\n" +
+	"\x10UserEmailAddress\x12\x1c\n" +
+	"\tuserEmail\x18\x01 \x01(\tR\tuserEmail\"8\n" +
+	"\x0eHashedPassword\x12&\n" +
+	"\x0ehashedPassword\x18\x01 \x01(\tR\x0ehashedPassword\",\n" +
+	"\x12UserExistsResponse\x12\x16\n" +
+	"\x06isUser\x18\x01 \x01(\bR\x06isUser\"\x92\x01\n" +
+	"\x14UserRegistrationForm\x12\x1c\n" +
+	"\tfirstName\x18\x01 \x01(\tR\tfirstName\x12\x1a\n" +
+	"\blastName\x18\x02 \x01(\tR\blastName\x12\x1c\n" +
+	"\tuserEmail\x18\x03 \x01(\tR\tuserEmail\x12\"\n" +
+	"\fpasswordHash\x18\x04 \x01(\tR\fpasswordHash\">\n" +
+	"\x18UserRegistrationResponse\x12\"\n" +
+	"\fisRegistered\x18\x01 \x01(\bR\fisRegistered2\xa8\x02\n" +
+	"\vAuthService\x12>\n" +
+	"\x16RetrieveHashedPassword\x12\x11.UserEmailAddress\x1a\x0f.HashedPassword\"\x00\x12;\n" +
+	"\x0fCheckUserExists\x12\x11.UserEmailAddress\x1a\x13.UserExistsResponse\"\x00\x12B\n" +
+	"\fRegisterUser\x12\x15.UserRegistrationForm\x1a\x19.UserRegistrationResponse\"\x00\x12,\n" +
+	"\rGenerateToken\x12\x11.UserEmailAddress\x1a\x06.Token\"\x00\x12*\n" +
+	"\vVerifyToken\x12\x06.Token\x1a\x11.UserEmailAddress\"\x00B9Z7github.com/andreistefanciprian/gomicropay/auth/proto/pbb\x06proto3"
 
 var (
-	file_proto_auth_svc_proto_rawDescOnce sync.Once
-	file_proto_auth_svc_proto_rawDescData []byte
+	file_auth_proto_auth_svc_proto_rawDescOnce sync.Once
+	file_auth_proto_auth_svc_proto_rawDescData []byte
 )
 
-func file_proto_auth_svc_proto_rawDescGZIP() []byte {
-	file_proto_auth_svc_proto_rawDescOnce.Do(func() {
-		file_proto_auth_svc_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_proto_auth_svc_proto_rawDesc), len(file_proto_auth_svc_proto_rawDesc)))
+func file_auth_proto_auth_svc_proto_rawDescGZIP() []byte {
+	file_auth_proto_auth_svc_proto_rawDescOnce.Do(func() {
+		file_auth_proto_auth_svc_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_auth_proto_auth_svc_proto_rawDesc), len(file_auth_proto_auth_svc_proto_rawDesc)))
 	})
-	return file_proto_auth_svc_proto_rawDescData
+	return file_auth_proto_auth_svc_proto_rawDescData
 }
 
-var file_proto_auth_svc_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
-var file_proto_auth_svc_proto_goTypes = []any{
-	(*Token)(nil),       // 0: Token
-	(*Credentials)(nil), // 1: Credentials
-	(*User)(nil),        // 2: User
+var file_auth_proto_auth_svc_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_auth_proto_auth_svc_proto_goTypes = []any{
+	(*Token)(nil),                    // 0: Token
+	(*UserEmailAddress)(nil),         // 1: UserEmailAddress
+	(*HashedPassword)(nil),           // 2: HashedPassword
+	(*UserExistsResponse)(nil),       // 3: UserExistsResponse
+	(*UserRegistrationForm)(nil),     // 4: UserRegistrationForm
+	(*UserRegistrationResponse)(nil), // 5: UserRegistrationResponse
 }
-var file_proto_auth_svc_proto_depIdxs = []int32{
-	1, // 0: AuthService.GetToken:input_type -> Credentials
-	0, // 1: AuthService.ValidateToken:input_type -> Token
-	0, // 2: AuthService.GetToken:output_type -> Token
-	2, // 3: AuthService.ValidateToken:output_type -> User
-	2, // [2:4] is the sub-list for method output_type
-	0, // [0:2] is the sub-list for method input_type
+var file_auth_proto_auth_svc_proto_depIdxs = []int32{
+	1, // 0: AuthService.RetrieveHashedPassword:input_type -> UserEmailAddress
+	1, // 1: AuthService.CheckUserExists:input_type -> UserEmailAddress
+	4, // 2: AuthService.RegisterUser:input_type -> UserRegistrationForm
+	1, // 3: AuthService.GenerateToken:input_type -> UserEmailAddress
+	0, // 4: AuthService.VerifyToken:input_type -> Token
+	2, // 5: AuthService.RetrieveHashedPassword:output_type -> HashedPassword
+	3, // 6: AuthService.CheckUserExists:output_type -> UserExistsResponse
+	5, // 7: AuthService.RegisterUser:output_type -> UserRegistrationResponse
+	0, // 8: AuthService.GenerateToken:output_type -> Token
+	1, // 9: AuthService.VerifyToken:output_type -> UserEmailAddress
+	5, // [5:10] is the sub-list for method output_type
+	0, // [0:5] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
 }
 
-func init() { file_proto_auth_svc_proto_init() }
-func file_proto_auth_svc_proto_init() {
-	if File_proto_auth_svc_proto != nil {
+func init() { file_auth_proto_auth_svc_proto_init() }
+func file_auth_proto_auth_svc_proto_init() {
+	if File_auth_proto_auth_svc_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_auth_svc_proto_rawDesc), len(file_proto_auth_svc_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_auth_proto_auth_svc_proto_rawDesc), len(file_auth_proto_auth_svc_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_proto_auth_svc_proto_goTypes,
-		DependencyIndexes: file_proto_auth_svc_proto_depIdxs,
-		MessageInfos:      file_proto_auth_svc_proto_msgTypes,
+		GoTypes:           file_auth_proto_auth_svc_proto_goTypes,
+		DependencyIndexes: file_auth_proto_auth_svc_proto_depIdxs,
+		MessageInfos:      file_auth_proto_auth_svc_proto_msgTypes,
 	}.Build()
-	File_proto_auth_svc_proto = out.File
-	file_proto_auth_svc_proto_goTypes = nil
-	file_proto_auth_svc_proto_depIdxs = nil
+	File_auth_proto_auth_svc_proto = out.File
+	file_auth_proto_auth_svc_proto_goTypes = nil
+	file_auth_proto_auth_svc_proto_depIdxs = nil
 }

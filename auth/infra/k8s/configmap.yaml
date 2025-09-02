@@ -3,4 +3,5 @@ kind: ConfigMap
 metadata:
   name: auth-configmap
 data:
-  PLACEHOLDER: "NONE"
+  LOG_LEVEL: "DEBUG"
+  AUTH_SERVICE_PORT: "9000"

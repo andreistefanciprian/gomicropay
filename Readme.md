@@ -8,17 +8,30 @@ This repository is a hands-on way to learn about microservice architecture using
 
 All endpoints require requests to include the JWT token in the `Authorization` header after login.
 ```
+# Register customer
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"first_name": "Gigi", "last_name": "Gheorghe", "email": "cip@email.com", "password": "SecurePass123!"}' \
+  http://localhost:8080/register
+
 # Authenticate user and receive JWT token
-JWT_TOKEN=$(curl -s -u cip@email.com:Admin123 http://localhost:8080/login)
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"email": "cip@email.com", "password": "SecurePass123!"}' \
+  http://localhost:8080/login
 
-# Authorize a transaction (requires JWT)
-pid=$(curl -s -X POST -H "Authorization: Bearer $JWT_TOKEN" --data @authorize_payload.json http://localhost:8080/customer/payment/authorize | jq -r .pid)
+# Authorize payment
+curl -X POST -H "Authorization: Bearer <JWT_TOKEN>" -H "Content-Type: application/json" \
+  -d '{"customer_wallet_user_id": "cip@email.com", "merchant_wallet_user_id": "merchant_id", "cents": 1000, "currency": "USD"}' \
+  http://localhost:8080/customer/payment/authorize
 
-# Capture payment using pid
-curl -X POST -H "Authorization: Bearer $JWT_TOKEN" -d "{\"pid\": \"$pid\"}" http://localhost:8080/customer/payment/capture
+# Capture payment
+curl -X POST -H "Authorization: Bearer <JWT_TOKEN>" \
+  -d '{"pid": "<pid>"}' \
+  http://localhost:8080/customer/payment/capture
 
-# Get account balance (requires JWT)
-curl -X POST -H "Authorization: Bearer $JWT_TOKEN" -d "{\"wallet_user_id\": \"cip@email.com\"}" http://localhost:8080/checkbalance
+# Check balance
+curl -X POST -H "Authorization: Bearer <JWT_TOKEN>" \
+  -d '{"wallet_user_id": "cip@email.com"}' \
+  http://localhost:8080/checkbalance
 ```
 
 ## Transaction Flow

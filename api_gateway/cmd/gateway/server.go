@@ -11,7 +11,9 @@ import (
 	"strings"
 
 	authpb "github.com/andreistefanciprian/gomicropay/api_gateway/auth"
+	"github.com/andreistefanciprian/gomicropay/api_gateway/internal/validator"
 	mmpb "github.com/andreistefanciprian/gomicropay/api_gateway/money_movement"
+	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -79,6 +81,7 @@ func main() {
 	log.Println("Money Movement gRPC connection established.")
 	mmClient = mmpb.NewMoneyMovementServiceClient(mmConn)
 
+	http.HandleFunc("/register", register)
 	http.HandleFunc("/login", login)
 	http.HandleFunc("/customer/payment/authorize", customerPaymentAuthorize)
 	http.HandleFunc("/customer/payment/capture", customerPaymentCapture)
@@ -91,30 +94,159 @@ func main() {
 	}
 }
 
-func login(w http.ResponseWriter, r *http.Request) {
-	logInfo("login handler called")
-	username, password, ok := r.BasicAuth()
-	logDebug("BasicAuth username: %s", username)
-	if !ok {
-		logInfo("BasicAuth failed: missing or invalid credentials")
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+func register(w http.ResponseWriter, r *http.Request) {
+	logInfo("register handler called")
+
+	var req struct {
+		FirstName string `json:"first_name"`
+		LastName  string `json:"last_name"`
+		Email     string `json:"email"`
+		Password  string `json:"password"`
+	}
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		logInfo("Failed to decode JSON body: %v", err)
+		http.Error(w, "Failed to decode JSON body", http.StatusBadRequest)
 		return
 	}
 
-	ctx := context.Background()
-	token, err := authClient.GetToken(ctx, &authpb.Credentials{
-		UserName: username,
-		Password: password,
-	})
+	// Verify Blank fields
+	if req.FirstName == "" || req.LastName == "" || req.Email == "" || req.Password == "" {
+		logInfo("One or more required fields are blank")
+		http.Error(w, "All fields are required", http.StatusBadRequest)
+		return
+	}
+
+	// Verify password length
+	ok := validator.MinChars(req.Password, 8)
+	if !ok {
+		logInfo("Password does not meet minimum length requirement")
+		http.Error(w, "Password must be at least 8 characters long", http.StatusBadRequest)
+		return
+	}
+
+	// Create a bcrypt hash of the plain-text password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), 12)
 	if err != nil {
-		logInfo("GetToken failed: %v", err)
+		logInfo("Failed to hash password: %v", err)
+		http.Error(w, "Failed to hash password", http.StatusInternalServerError)
+		return
+	}
+
+	//  Check if user exists
+	userExistsResp, err := authClient.CheckUserExists(context.Background(), &authpb.UserEmailAddress{UserEmail: req.Email})
+	if err != nil {
+		logInfo("Failed to check if user exists: %v", err)
+		http.Error(w, "Failed to check if user exists", http.StatusInternalServerError)
+		return
+	}
+	if userExistsResp.IsUser {
+		logInfo("User already exists: %s", req.Email)
+		http.Error(w, "User already exists", http.StatusConflict)
+		return
+	}
+
+	//  Verify email format
+	ok = validator.Matches(req.Email, validator.EmailRX)
+	if !ok {
+		logInfo("Invalid email format: %s", req.Email)
+		http.Error(w, "Invalid email format", http.StatusBadRequest)
+		return
+	}
+
+	// Register user
+	userRegistrationData := &authpb.UserRegistrationForm{
+		FirstName:    req.FirstName,
+		LastName:     req.LastName,
+		UserEmail:    req.Email,
+		PasswordHash: string(hashedPassword),
+	}
+
+	logDebug("User registration data: %+v", userRegistrationData)
+
+	response, err := authClient.RegisterUser(context.Background(), userRegistrationData)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	responseJSON, err := json.Marshal(response)
+	if err != nil {
+		logInfo("Failed to marshal response: %v", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	logInfo("User registered successfully: %v", response)
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(responseJSON)
+	if err != nil {
+		logInfo("Failed to write response: %v", err)
+	}
+}
+
+func login(w http.ResponseWriter, r *http.Request) {
+	logInfo("userLogin handler called")
+
+	var req struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		logInfo("Failed to decode JSON body: %v", err)
+		http.Error(w, "Failed to decode JSON body", http.StatusBadRequest)
+		return
+	}
+
+	// Verify Blank fields
+	if req.Email == "" || req.Password == "" {
+		logInfo("One or more required fields are blank")
+		http.Error(w, "All fields are required", http.StatusBadRequest)
+		return
+	}
+
+	//  Check if user exists
+	userExistsResp, err := authClient.CheckUserExists(context.Background(), &authpb.UserEmailAddress{UserEmail: req.Email})
+	if err != nil {
+		logInfo("Failed to check if user exists: %v", err)
+		http.Error(w, "Failed to check if user exists", http.StatusInternalServerError)
+		return
+	}
+	if !userExistsResp.IsUser {
+		logInfo("User is not registered: %s", req.Email)
+		http.Error(w, "User is not registered", http.StatusConflict)
+		return
+	}
+
+	// Get password hash from auth service
+	hashedPassword, err := authClient.RetrieveHashedPassword(context.Background(), &authpb.UserEmailAddress{UserEmail: req.Email})
+	if err != nil {
+		logInfo("Failed to retrieve hashed password: %v", err)
+		http.Error(w, "Failed to retrieve hashed password", http.StatusInternalServerError)
+		return
+	}
+
+	// Check password is valid
+	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword.HashedPassword), []byte(req.Password)); err != nil {
+		logInfo("Invalid password for user %s: %v", req.Email, err)
+		http.Error(w, "Invalid password", http.StatusUnauthorized)
+		return
+	}
+
+	// Generate JWT token
+	ctx := context.Background()
+	token, err := authClient.GenerateToken(ctx, &authpb.UserEmailAddress{UserEmail: req.Email})
+	if err != nil {
+		logInfo("GenerateToken failed: %v", err)
 		_, writeErr := w.Write([]byte(err.Error()))
 		if writeErr != nil {
 			log.Println(writeErr)
 		}
 		return
 	}
-	logDebug("Token generated for user %s: %s", username, token.Jwt)
+	logDebug("Token generated for user %s: %s", req.Email, token.Jwt)
+	logInfo("User logged in successfully: %s", req.Email)
 	_, err = w.Write([]byte(token.Jwt))
 	if err != nil {
 		log.Println("Failed to write token:", err)
@@ -329,9 +461,9 @@ func checkAuthHeader(context context.Context, r *http.Request) error {
 
 	token := strings.TrimPrefix(authHeader, "Bearer ")
 	logDebug("Extracted token: %s", token)
-	_, err := authClient.ValidateToken(context, &authpb.Token{Jwt: token})
+	_, err := authClient.VerifyToken(context, &authpb.Token{Jwt: token})
 	if err != nil {
-		logInfo("Token validation failed: %v", err)
+		logInfo("Token verification failed: %v", err)
 		return status.Error(codes.Unauthenticated, "invalid token")
 	}
 	return nil
