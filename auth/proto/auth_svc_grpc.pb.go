@@ -30,8 +30,6 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AuthServiceClient interface {
-	// rpc GetToken(Credentials) returns (Token) {}
-	// rpc ValidateToken(Token) returns (User) {}
 	RetrieveHashedPassword(ctx context.Context, in *UserEmailAddress, opts ...grpc.CallOption) (*HashedPassword, error)
 	CheckUserExists(ctx context.Context, in *UserEmailAddress, opts ...grpc.CallOption) (*UserExistsResponse, error)
 	RegisterUser(ctx context.Context, in *UserRegistrationForm, opts ...grpc.CallOption) (*UserRegistrationResponse, error)
@@ -101,8 +99,6 @@ func (c *authServiceClient) VerifyToken(ctx context.Context, in *Token, opts ...
 // All implementations must embed UnimplementedAuthServiceServer
 // for forward compatibility.
 type AuthServiceServer interface {
-	// rpc GetToken(Credentials) returns (Token) {}
-	// rpc ValidateToken(Token) returns (User) {}
 	RetrieveHashedPassword(context.Context, *UserEmailAddress) (*HashedPassword, error)
 	CheckUserExists(context.Context, *UserEmailAddress) (*UserExistsResponse, error)
 	RegisterUser(context.Context, *UserRegistrationForm) (*UserRegistrationResponse, error)
