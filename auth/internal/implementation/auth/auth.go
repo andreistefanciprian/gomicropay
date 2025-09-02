@@ -54,6 +54,7 @@ func NewAuthImplementation(db *sql.DB) *Implementation {
 }
 
 func (i *Implementation) RetrieveHashedPassword(ctx context.Context, userEmail *pb.UserEmailAddress) (*pb.HashedPassword, error) {
+	logDebug("RetrieveHashedPassword called for email: %s", userEmail.GetUserEmail())
 	type user struct {
 		passwordHash string
 	}
@@ -62,6 +63,7 @@ func (i *Implementation) RetrieveHashedPassword(ctx context.Context, userEmail *
 
 	stmt, err := i.db.Prepare(selectPasswordHashQuery)
 	if err != nil {
+		logInfo("RetrieveHashedPassword failed: prepare error: %v", err)
 		log.Println(err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -70,30 +72,38 @@ func (i *Implementation) RetrieveHashedPassword(ctx context.Context, userEmail *
 	err = stmt.QueryRow(userEmail.GetUserEmail()).Scan(&u.passwordHash)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
+			logInfo("RetrieveHashedPassword failed: no rows for email: %s", userEmail.GetUserEmail())
 			return nil, status.Error(codes.Unauthenticated, "invalid email address")
 		}
+		logInfo("RetrieveHashedPassword failed: query error: %v", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	logInfo("RetrieveHashedPassword succeeded for email: %s", userEmail.GetUserEmail())
 	return &pb.HashedPassword{HashedPassword: u.passwordHash}, nil
 }
 
 func (i *Implementation) CheckUserExists(ctx context.Context, in *pb.UserEmailAddress) (*pb.UserExistsResponse, error) {
+	logDebug("CheckUserExists called for email: %s", in.GetUserEmail())
 	var count int
 	stmt, err := i.db.Prepare(checkUserExistsQuery)
 	if err != nil {
+		logInfo("CheckUserExists failed: prepare error: %v", err)
 		log.Println(err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	defer stmt.Close()
 	err = stmt.QueryRow(in.GetUserEmail()).Scan(&count)
 	if err != nil {
+		logInfo("CheckUserExists failed: query error: %v", err)
 		log.Println(err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if count == 0 {
+		logInfo("CheckUserExists: user does not exist for email: %s", in.GetUserEmail())
 		return &pb.UserExistsResponse{IsUser: false}, nil
 	}
 
+	logInfo("CheckUserExists: user exists for email: %s", in.GetUserEmail())
 	return &pb.UserExistsResponse{IsUser: true}, nil
 }
 
@@ -116,19 +126,25 @@ func (i *Implementation) RegisterUser(ctx context.Context, in *pb.UserRegistrati
 }
 
 func (i *Implementation) GenerateToken(ctx context.Context, email *pb.UserEmailAddress) (*pb.Token, error) {
+	logDebug("GenerateToken called for email: %s", email.GetUserEmail())
 	jwToken, err := createJWT(email.GetUserEmail())
 	if err != nil {
+		logInfo("GenerateToken failed: JWT creation error: %v", err)
 		return nil, err
 	}
+	logInfo("GenerateToken succeeded for email: %s", email.GetUserEmail())
 	return &pb.Token{Jwt: jwToken}, nil
 }
 
 func (i *Implementation) VerifyToken(ctx context.Context, token *pb.Token) (*pb.UserEmailAddress, error) {
+	logDebug("VerifyToken called for token: %s", token.Jwt)
 	key := []byte(os.Getenv("SIGNING_KEY"))
 	emailAddress, err := validateJWT(token.Jwt, key)
 	if err != nil {
+		logInfo("VerifyToken failed: JWT validation error: %v", err)
 		return nil, err
 	}
+	logInfo("VerifyToken succeeded for email: %s", emailAddress)
 	return &pb.UserEmailAddress{UserEmail: emailAddress}, nil
 }
 
