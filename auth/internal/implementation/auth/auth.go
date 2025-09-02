@@ -6,7 +6,6 @@ import (
 	"errors"
 	"log"
 	"os"
-	"strings"
 	"time"
 
 	pb "github.com/andreistefanciprian/gomicropay/auth/proto"
@@ -22,7 +21,7 @@ func getLogLevel() string {
 	if lvl == "" {
 		return "INFO"
 	}
-	return strings.ToLower(lvl)
+	return lvl
 }
 
 func logInfo(format string, v ...interface{}) {
