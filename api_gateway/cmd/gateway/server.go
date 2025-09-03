@@ -10,9 +10,9 @@ import (
 	"os"
 	"strings"
 
-	authpb "github.com/andreistefanciprian/gomicropay/api_gateway/auth"
+	authpb "github.com/andreistefanciprian/gomicropay/api_gateway/auth/proto"
 	"github.com/andreistefanciprian/gomicropay/api_gateway/internal/validator"
-	mmpb "github.com/andreistefanciprian/gomicropay/api_gateway/money_movement"
+	mmpb "github.com/andreistefanciprian/gomicropay/api_gateway/money_movement/proto"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -268,7 +268,7 @@ func checkBalance(w http.ResponseWriter, r *http.Request) {
 
 	// Call money movement service
 	type checkBalancePayload struct {
-		WalletUserId string `json:"wallet_user_id"`
+		EmailAddress string `json:"email_address"`
 	}
 
 	var payload checkBalancePayload
@@ -290,7 +290,7 @@ func checkBalance(w http.ResponseWriter, r *http.Request) {
 	logDebug("checkBalance payload: %+v", payload)
 	ctx = context.Background()
 	authorizedResponse, err := mmClient.CheckBalance(ctx, &mmpb.CheckBalancePayload{
-		UserId: payload.WalletUserId,
+		EmailAddress: payload.EmailAddress,
 	})
 	if err != nil {
 		logInfo("Check balance failed: %v", err)
@@ -338,8 +338,8 @@ func customerPaymentAuthorize(w http.ResponseWriter, r *http.Request) {
 
 	// Call money movement service
 	type authorizePayload struct {
-		CustomerWalletUserId string `json:"customer_wallet_user_id"`
-		MerchantWalletUserId string `json:"merchant_wallet_user_id"`
+		CustomerEmailAddress string `json:"customer_email_address"`
+		MerchantEmailAddress string `json:"merchant_email_address"`
 		Cents                int64  `json:"cents"`
 		Currency             string `json:"currency"`
 	}
@@ -363,8 +363,8 @@ func customerPaymentAuthorize(w http.ResponseWriter, r *http.Request) {
 	logDebug("Authorize payload: %+v", payload)
 	ctx = context.Background()
 	authorizedResponse, err := mmClient.Authorize(ctx, &mmpb.AuthorizePayload{
-		CustomerWalletUserId: payload.CustomerWalletUserId,
-		MerchantWalletUserId: payload.MerchantWalletUserId,
+		CustomerEmailAddress: payload.CustomerEmailAddress,
+		MerchantEmailAddress: payload.MerchantEmailAddress,
 		Cents:                payload.Cents,
 		Currency:             payload.Currency,
 	})

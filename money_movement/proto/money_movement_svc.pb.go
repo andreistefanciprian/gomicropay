@@ -70,8 +70,8 @@ func (WalletType) EnumDescriptor() ([]byte, []int) {
 
 type AuthorizePayload struct {
 	state                protoimpl.MessageState `protogen:"open.v1"`
-	CustomerWalletUserId string                 `protobuf:"bytes,1,opt,name=customerWalletUserId,proto3" json:"customerWalletUserId,omitempty"`
-	MerchantWalletUserId string                 `protobuf:"bytes,2,opt,name=merchantWalletUserId,proto3" json:"merchantWalletUserId,omitempty"`
+	CustomerEmailAddress string                 `protobuf:"bytes,1,opt,name=customerEmailAddress,proto3" json:"customerEmailAddress,omitempty"`
+	MerchantEmailAddress string                 `protobuf:"bytes,2,opt,name=merchantEmailAddress,proto3" json:"merchantEmailAddress,omitempty"`
 	Cents                int64                  `protobuf:"varint,3,opt,name=cents,proto3" json:"cents,omitempty"`
 	Currency             string                 `protobuf:"bytes,4,opt,name=currency,proto3" json:"currency,omitempty"`
 	unknownFields        protoimpl.UnknownFields
@@ -108,16 +108,16 @@ func (*AuthorizePayload) Descriptor() ([]byte, []int) {
 	return file_money_movement_proto_money_movement_svc_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *AuthorizePayload) GetCustomerWalletUserId() string {
+func (x *AuthorizePayload) GetCustomerEmailAddress() string {
 	if x != nil {
-		return x.CustomerWalletUserId
+		return x.CustomerEmailAddress
 	}
 	return ""
 }
 
-func (x *AuthorizePayload) GetMerchantWalletUserId() string {
+func (x *AuthorizePayload) GetMerchantEmailAddress() string {
 	if x != nil {
-		return x.MerchantWalletUserId
+		return x.MerchantEmailAddress
 	}
 	return ""
 }
@@ -226,7 +226,7 @@ func (x *AuthorizeResponse) GetPid() string {
 
 type CheckBalancePayload struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=userId,proto3" json:"userId,omitempty"`
+	EmailAddress  string                 `protobuf:"bytes,1,opt,name=emailAddress,proto3" json:"emailAddress,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -261,9 +261,9 @@ func (*CheckBalancePayload) Descriptor() ([]byte, []int) {
 	return file_money_movement_proto_money_movement_svc_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *CheckBalancePayload) GetUserId() string {
+func (x *CheckBalancePayload) GetEmailAddress() string {
 	if x != nil {
-		return x.UserId
+		return x.EmailAddress
 	}
 	return ""
 }
@@ -386,16 +386,16 @@ const file_money_movement_proto_money_movement_svc_proto_rawDesc = "" +
 	"\n" +
 	"-money_movement/proto/money_movement_svc.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xac\x01\n" +
 	"\x10AuthorizePayload\x122\n" +
-	"\x14customerWalletUserId\x18\x01 \x01(\tR\x14customerWalletUserId\x122\n" +
-	"\x14merchantWalletUserId\x18\x02 \x01(\tR\x14merchantWalletUserId\x12\x14\n" +
+	"\x14customerEmailAddress\x18\x01 \x01(\tR\x14customerEmailAddress\x122\n" +
+	"\x14merchantEmailAddress\x18\x02 \x01(\tR\x14merchantEmailAddress\x12\x14\n" +
 	"\x05cents\x18\x03 \x01(\x03R\x05cents\x12\x1a\n" +
 	"\bcurrency\x18\x04 \x01(\tR\bcurrency\"\"\n" +
 	"\x0eCapturePayload\x12\x10\n" +
 	"\x03pid\x18\x01 \x01(\tR\x03pid\"%\n" +
 	"\x11AuthorizeResponse\x12\x10\n" +
-	"\x03pid\x18\x01 \x01(\tR\x03pid\"-\n" +
-	"\x13CheckBalancePayload\x12\x16\n" +
-	"\x06userId\x18\x01 \x01(\tR\x06userId\":\n" +
+	"\x03pid\x18\x01 \x01(\tR\x03pid\"9\n" +
+	"\x13CheckBalancePayload\x12\"\n" +
+	"\femailAddress\x18\x01 \x01(\tR\femailAddress\":\n" +
 	"\x14CheckBalanceResponse\x12\"\n" +
 	"\fbalanceCents\x18\x01 \x01(\x03R\fbalanceCents\"\xd1\x01\n" +
 	"\x14CreateAccountPayload\x12\"\n" +

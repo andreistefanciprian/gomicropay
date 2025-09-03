@@ -12,8 +12,8 @@ service MoneyMovementService {
 }
 
 message AuthorizePayload {
-    string customerWalletUserId = 1;
-    string merchantWalletUserId = 2;
+    string customerEmailAddress = 1;
+    string merchantEmailAddress = 2;
     int64 cents = 3;
     string currency = 4;
 }
@@ -27,7 +27,7 @@ message AuthorizeResponse {
 }
 
 message CheckBalancePayload {
-    string userId = 1;
+    string emailAddress = 1;
 }
 
 message CheckBalanceResponse {

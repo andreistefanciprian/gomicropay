@@ -2,15 +2,15 @@ package ledger
 
 import "database/sql"
 
-func Insert(db *sql.DB, orderID, userID string, amount int64, operation, transactionDate string) error {
-	query := "INSERT INTO ledger (order_id, user_id, amount, operation, transaction_date) VALUES (?, ?, ?, ?, ?)"
+func Insert(db *sql.DB, orderID, customerEmailAddress string, amount int64, operation, transactionDate string) error {
+	query := "INSERT INTO ledger (order_id, customer_email_address, amount, operation, transaction_date) VALUES (?, ?, ?, ?, ?)"
 
 	stmt, err := db.Prepare(query)
 	if err != nil {
 		return err
 	}
 
-	_, err = stmt.Exec(orderID, userID, amount, operation, transactionDate)
+	_, err = stmt.Exec(orderID, customerEmailAddress, amount, operation, transactionDate)
 	if err != nil {
 		return err
 	}

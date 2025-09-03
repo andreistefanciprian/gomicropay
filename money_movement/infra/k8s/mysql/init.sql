@@ -8,9 +8,9 @@ USE money_movement;
 
 CREATE TABLE `wallet` (
     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    user_id VARCHAR(255) NOT NULL UNIQUE,
+    email_address VARCHAR(255) NOT NULL UNIQUE,
     wallet_type VARCHAR(255) NOT NULL,
-    INDEX(user_id)
+    INDEX(email_address)
 );
 
 CREATE TABLE `account` (
@@ -24,8 +24,8 @@ CREATE TABLE `account` (
 CREATE TABLE `transaction` (
     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     pid VARCHAR(255) NOT NULL,
-    src_user_id VARCHAR(255) NOT NULL,
-    dst_user_id VARCHAR(255) NOT NULL,
+    src_email_address VARCHAR(255) NOT NULL,
+    dst_email_address VARCHAR(255) NOT NULL,
     src_wallet_id INT NOT NULL,
     dst_wallet_id INT NOT NULL,
     src_account_id INT NOT NULL,

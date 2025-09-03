@@ -29,8 +29,8 @@ func logInfo(format string, v ...interface{}) {
 var wg sync.WaitGroup
 
 type EmailMsg struct {
-	OrderID string `json:"order_id"`
-	UserID  string `json:"user_id"`
+	OrderID      string `json:"order_id"`
+	EmailAddress string `json:"email_address"`
 }
 
 func main() {
@@ -104,10 +104,10 @@ func handleMessage(msg *sarama.ConsumerMessage) {
 		return
 	}
 	logDebug("EmailMsg unmarshalled: %+v", emailMsg)
-	err := email.Send(emailMsg.UserID, emailMsg.OrderID)
+	err := email.Send(emailMsg.EmailAddress, emailMsg.OrderID)
 	if err != nil {
 		logInfo("Error sending email: %v", err)
 		return
 	}
-	logInfo("Email sent to user %s for order %s", emailMsg.UserID, emailMsg.OrderID)
+	logInfo("Email sent to user %s for order %s", emailMsg.EmailAddress, emailMsg.OrderID)
 }

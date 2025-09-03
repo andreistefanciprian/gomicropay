@@ -40,9 +40,9 @@ func logDebug(format string, v ...interface{}) {
 }
 
 const (
-	selectTransactionQuery = "SELECT pid, src_user_id, dst_user_id, src_wallet_id, dst_wallet_id, src_account_id, dst_account_id, src_account_type, dst_account_type, final_dst_merchant_wallet_id, amount FROM transaction WHERE pid = ?"
-	insertTransactionQuery = "INSERT INTO transaction (pid, src_user_id, dst_user_id, src_wallet_id, dst_wallet_id, src_account_id, dst_account_id, src_account_type, dst_account_type, final_dst_merchant_wallet_id, amount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-	createWalletQuery      = "INSERT INTO wallet (user_id, wallet_type) VALUES (?, ?)"
+	selectTransactionQuery = "SELECT pid, src_email_address, dst_email_address, src_wallet_id, dst_wallet_id, src_account_id, dst_account_id, src_account_type, dst_account_type, final_dst_merchant_wallet_id, amount FROM transaction WHERE pid = ?"
+	insertTransactionQuery = "INSERT INTO transaction (pid, src_email_address, dst_email_address, src_wallet_id, dst_wallet_id, src_account_id, dst_account_id, src_account_type, dst_account_type, final_dst_merchant_wallet_id, amount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+	createWalletQuery      = "INSERT INTO wallet (email_address, wallet_type) VALUES (?, ?)"
 	createAccountQuery     = "INSERT INTO account (cents, account_type, wallet_id) VALUES (?, ?, ?)"
 )
 
@@ -73,7 +73,7 @@ func (i *Implementation) Authorize(ctx context.Context, authorizePayload *pb.Aut
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	merchantWallet, err := fetchWallet(tx, authorizePayload.MerchantWalletUserId)
+	merchantWallet, err := fetchWallet(tx, authorizePayload.MerchantEmailAddress)
 	if err != nil {
 		logInfo("Authorize failed: could not fetch merchant wallet: %v", err)
 		rollbackErr := tx.Rollback()
@@ -84,7 +84,7 @@ func (i *Implementation) Authorize(ctx context.Context, authorizePayload *pb.Aut
 		return nil, err
 	}
 
-	customerWallet, err := fetchWallet(tx, authorizePayload.CustomerWalletUserId)
+	customerWallet, err := fetchWallet(tx, authorizePayload.CustomerEmailAddress)
 	if err != nil {
 		logInfo("Authorize failed: could not fetch customer wallet: %v", err)
 		rollbackErr := tx.Rollback()
@@ -207,7 +207,7 @@ func (i *Implementation) Capture(ctx context.Context, capturePayload *pb.Capture
 		return nil, err
 	}
 
-	customerWallet, err := fetchWallet(tx, authorizeTransaction.srcUserID)
+	customerWallet, err := fetchWallet(tx, authorizeTransaction.srcEmailAddress)
 	if err != nil {
 		logInfo("Capture failed: could not fetch customer wallet: %v", err)
 		rollbackErr := tx.Rollback()
@@ -256,7 +256,7 @@ func (i *Implementation) Capture(ctx context.Context, capturePayload *pb.Capture
 
 	// Send Kafka message
 	logInfo("Sending Kafka messages for transaction: pid=%s", authorizeTransaction.pid)
-	producer.SendCaptureMessage(i.producer, authorizeTransaction.pid, authorizeTransaction.srcUserID, authorizeTransaction.amount)
+	producer.SendCaptureMessage(i.producer, authorizeTransaction.pid, authorizeTransaction.srcEmailAddress, authorizeTransaction.amount)
 
 	return &emptypb.Empty{}, nil
 }
@@ -346,8 +346,8 @@ func (i *Implementation) CheckBalance(ctx context.Context, checkBalancePayload *
 		logInfo("CheckBalance failed: could not begin transaction: %v", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	// get wallet based on user_id
-	wallet, err := fetchWallet(tx, checkBalancePayload.UserId)
+	// get wallet based on email_address
+	wallet, err := fetchWallet(tx, checkBalancePayload.EmailAddress)
 	if err != nil {
 		logInfo("CheckBalance failed: could not fetch wallet: %v", err)
 		rollbackErr := tx.Rollback()
@@ -392,22 +392,22 @@ func (i *Implementation) CheckBalance(ctx context.Context, checkBalancePayload *
 		return nil, err
 	}
 
-	logInfo("CheckBalance succeeded: userId=%s, balanceCents=%d", checkBalancePayload.UserId, account.cents)
+	logInfo("CheckBalance succeeded: emailAddress=%s, balanceCents=%d", checkBalancePayload.EmailAddress, account.cents)
 	return &pb.CheckBalanceResponse{
 		BalanceCents: account.cents,
 	}, nil
 }
 
-func fetchWallet(tx *sql.Tx, userID string) (wallet, error) {
+func fetchWallet(tx *sql.Tx, emailAddress string) (wallet, error) {
 	var w wallet
 
-	stmt, err := tx.Prepare("SELECT id, user_id, wallet_type FROM wallet WHERE user_id = ?")
+	stmt, err := tx.Prepare("SELECT id, email_address, wallet_type FROM wallet WHERE email_address = ?")
 	if err != nil {
 		return w, status.Error(codes.Internal, err.Error())
 	}
 	defer stmt.Close()
 
-	err = stmt.QueryRow(userID).Scan(&w.ID, &w.userID, &w.walletType)
+	err = stmt.QueryRow(emailAddress).Scan(&w.ID, &w.emailAddress, &w.walletType)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return w, status.Error(codes.InvalidArgument, err.Error())
@@ -421,13 +421,13 @@ func fetchWallet(tx *sql.Tx, userID string) (wallet, error) {
 func fetchWalletWithWalletID(tx *sql.Tx, walletID int32) (wallet, error) {
 	var w wallet
 
-	stmt, err := tx.Prepare("SELECT id, user_id, wallet_type FROM wallet WHERE id = ?")
+	stmt, err := tx.Prepare("SELECT id, email_address, wallet_type FROM wallet WHERE id = ?")
 	if err != nil {
 		return w, status.Error(codes.Internal, err.Error())
 	}
 	defer stmt.Close()
 
-	err = stmt.QueryRow(walletID).Scan(&w.ID, &w.userID, &w.walletType)
+	err = stmt.QueryRow(walletID).Scan(&w.ID, &w.emailAddress, &w.walletType)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return w, status.Error(codes.InvalidArgument, err.Error())
@@ -500,7 +500,7 @@ func createTransaction(tx *sql.Tx, pid string, srcAccount account, dstAccount ac
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(pid, srcWallet.userID, dstWallet.userID, srcWallet.ID, dstWallet.ID, srcAccount.ID, dstAccount.ID, srcAccount.accountType, dstAccount.accountType, finalDstWallet.ID, amount)
+	_, err = stmt.Exec(pid, srcWallet.emailAddress, dstWallet.emailAddress, srcWallet.ID, dstWallet.ID, srcAccount.ID, dstAccount.ID, srcAccount.accountType, dstAccount.accountType, finalDstWallet.ID, amount)
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
@@ -571,7 +571,7 @@ func fetchTransaction(tx *sql.Tx, pid string) (transaction, error) {
 	}
 	defer stmt.Close()
 
-	err = stmt.QueryRow(pid).Scan(&t.pid, &t.srcUserID, &t.dstUserID, &t.srcAccountWalletID, &t.dstAccountWalletID, &t.srcAccountID, &t.dstAccountID, &t.srcAccountType, &t.dstAccountType, &t.finalDstMerchantWalletID, &t.amount)
+	err = stmt.QueryRow(pid).Scan(&t.pid, &t.srcEmailAddress, &t.dstEmailAddress, &t.srcAccountWalletID, &t.dstAccountWalletID, &t.srcAccountID, &t.dstAccountID, &t.srcAccountType, &t.dstAccountType, &t.finalDstMerchantWalletID, &t.amount)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return t, status.Error(codes.InvalidArgument, err.Error())
@@ -583,9 +583,9 @@ func fetchTransaction(tx *sql.Tx, pid string) (transaction, error) {
 }
 
 type wallet struct {
-	ID         int32
-	userID     string
-	walletType string
+	ID           int32
+	emailAddress string
+	walletType   string
 }
 
 type account struct {
@@ -598,8 +598,8 @@ type account struct {
 type transaction struct {
 	ID                       int32
 	pid                      string
-	srcUserID                string
-	dstUserID                string
+	srcEmailAddress          string
+	dstEmailAddress          string
 	srcAccountWalletID       int32
 	dstAccountWalletID       int32
 	srcAccountID             int32

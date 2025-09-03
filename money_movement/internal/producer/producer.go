@@ -15,31 +15,31 @@ const (
 )
 
 type EmailMsg struct {
-	OrderID string `json:"order_id"`
-	UserID  string `json:"user_id"`
+	OrderID      string `json:"order_id"`
+	EmailAddress string `json:"email_address"`
 }
 
 type LedgerMsg struct {
-	OrderID   string `json:"order_id"`
-	UserID    string `json:"user_id"`
-	Amount    int64  `json:"amount"`
-	Operation string `json:"operation"`
-	Date      string `json:"date"`
+	OrderID              string `json:"order_id"`
+	CustomerEmailAddress string `json:"customer_email_address"`
+	Amount               int64  `json:"amount"`
+	Operation            string `json:"operation"`
+	Date                 string `json:"date"`
 }
 
-func SendCaptureMessage(producer sarama.SyncProducer, pid, userID string, amount int64) {
+func SendCaptureMessage(producer sarama.SyncProducer, pid, customerEmailAddress string, amount int64) {
 	// Create email message
 	emailMsg := EmailMsg{
-		OrderID: pid,
-		UserID:  userID,
+		OrderID:      pid,
+		EmailAddress: customerEmailAddress,
 	}
 
 	ledgerMsg := LedgerMsg{
-		OrderID:   pid,
-		UserID:    userID,
-		Amount:    amount,
-		Operation: "DEBIT",
-		Date:      time.Now().Format("2006-01-02"),
+		OrderID:              pid,
+		CustomerEmailAddress: customerEmailAddress,
+		Amount:               amount,
+		Operation:            "DEBIT",
+		Date:                 time.Now().Format("2006-01-02"),
 	}
 
 	var wg sync.WaitGroup

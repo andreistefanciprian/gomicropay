@@ -26,16 +26,18 @@ curl -X POST -H "Authorization: Bearer <JWT_TOKEN>" -H "Content-Type: applicatio
   -d '{"email_address": "merchant@email.com", "wallet_type": "MERCHANT", "initial_balance_cents": 0, "initial_balance_currency": "USD"}' \
   http://localhost:8080/create-account
 
+
 # Authorize payment
 curl -X POST -H "Authorization: Bearer <JWT_TOKEN>" -H "Content-Type: application/json" \
-  -d '{"customer_wallet_user_id": "customer@email.com", "merchant_wallet_user_id": "merchant_id", "cents": 1000, "currency": "USD"}' \
+  -d '{"customer_email_address": "customer@email.com", "merchant_email_address": "merchant@email.com", "cents": 1000, "currency": "USD"}' \
   http://localhost:8080/customer/payment/authorize
 
 # Capture payment
 curl -X POST -H "Authorization: Bearer <JWT_TOKEN>" -d '{"pid": "<pid>"}' http://localhost:8080/customer/payment/capture
 
+
 # Check balance
-curl -X POST -H "Authorization: Bearer <JWT_TOKEN>" -d '{"wallet_user_id": "customer@email.com"}' http://localhost:8080/checkbalance
+curl -X POST -H "Authorization: Bearer <JWT_TOKEN>" -d '{"customer_email_address": "customer@email.com"}' http://localhost:8080/checkbalance
 ```
 
 
