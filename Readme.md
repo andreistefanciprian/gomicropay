@@ -80,7 +80,7 @@ docker run -it --network host --rm mysql mysql -h127.0.0.1 -P 33063 -u root -pAd
 docker compose down --remove-orphans
 ```
 
-## Deploy, Test and Debug
+## Deploy, Test and Debug in Kubernetes
 
 Requirements:
 - Docker
