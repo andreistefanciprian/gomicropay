@@ -10,29 +10,34 @@ All endpoints require requests to include the JWT token in the `Authorization` h
 ```
 # Register customer
 curl -X POST -H "Content-Type: application/json" \
-  -d '{"first_name": "Gigi", "last_name": "Gheorghe", "email": "cip@email.com", "password": "SecurePass123!"}' \
+  -d '{"first_name": "Happy", "last_name": "Man", "email": "customer@email.com", "password": "SecurePass123!"}' \
   http://localhost:8080/register
 
 # Authenticate user and receive JWT token
-curl -X POST -H "Content-Type: application/json" \
-  -d '{"email": "cip@email.com", "password": "SecurePass123!"}' \
-  http://localhost:8080/login
+curl -X POST -H "Content-Type: application/json" -d '{"email": "customer@email.com", "password": "SecurePass123!"}' http://localhost:8080/login
+
+# Create CUSTOMER account
+curl -X POST -H "Authorization: Bearer <JWT_TOKEN>" -H "Content-Type: application/json" \
+  -d '{"email_address": "customer@email.com", "wallet_type": "CUSTOMER", "initial_balance_cents": 4000000, "initial_balance_currency": "USD"}' \
+  http://localhost:8080/create-account
+
+# Create MERCHANT account
+curl -X POST -H "Authorization: Bearer <JWT_TOKEN>" -H "Content-Type: application/json" \
+  -d '{"email_address": "merchant@email.com", "wallet_type": "MERCHANT", "initial_balance_cents": 0, "initial_balance_currency": "USD"}' \
+  http://localhost:8080/create-account
 
 # Authorize payment
 curl -X POST -H "Authorization: Bearer <JWT_TOKEN>" -H "Content-Type: application/json" \
-  -d '{"customer_wallet_user_id": "cip@email.com", "merchant_wallet_user_id": "merchant_id", "cents": 1000, "currency": "USD"}' \
+  -d '{"customer_wallet_user_id": "customer@email.com", "merchant_wallet_user_id": "merchant_id", "cents": 1000, "currency": "USD"}' \
   http://localhost:8080/customer/payment/authorize
 
 # Capture payment
-curl -X POST -H "Authorization: Bearer <JWT_TOKEN>" \
-  -d '{"pid": "<pid>"}' \
-  http://localhost:8080/customer/payment/capture
+curl -X POST -H "Authorization: Bearer <JWT_TOKEN>" -d '{"pid": "<pid>"}' http://localhost:8080/customer/payment/capture
 
 # Check balance
-curl -X POST -H "Authorization: Bearer <JWT_TOKEN>" \
-  -d '{"wallet_user_id": "cip@email.com"}' \
-  http://localhost:8080/checkbalance
+curl -X POST -H "Authorization: Bearer <JWT_TOKEN>" -d '{"wallet_user_id": "customer@email.com"}' http://localhost:8080/checkbalance
 ```
+
 
 ## Transaction Flow
 

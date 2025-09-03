@@ -24,7 +24,7 @@ register_user() {
     echo
     echo "========== [Step 1] Registering user =========="
     echo "Using email: $CUSTOMER_EMAIL_ADDRESS"
-    REGISTER_PAYLOAD="{\"first_name\": \"Gigi\", \"last_name\": \"Gheorghe\", \"email\": \"$CUSTOMER_EMAIL_ADDRESS\", \"password\": \"SecurePass123!\"}"
+    REGISTER_PAYLOAD="{\"first_name\": \"Happy\", \"last_name\": \"Man\", \"email\": \"$CUSTOMER_EMAIL_ADDRESS\", \"password\": \"SecurePass123!\"}"
     echo "Register payload: $REGISTER_PAYLOAD"
     REGISTER_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" -d "$REGISTER_PAYLOAD" http://localhost:8080/register)
     echo "Register response: $REGISTER_RESPONSE"
