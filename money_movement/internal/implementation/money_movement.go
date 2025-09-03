@@ -10,6 +10,7 @@ import (
 	"github.com/IBM/sarama"
 	"github.com/andreistefanciprian/gomicropay/money_movement/internal/producer"
 	pb "github.com/andreistefanciprian/gomicropay/money_movement/proto"
+	"github.com/go-sql-driver/mysql"
 	"github.com/gogo/status"
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
@@ -41,6 +42,8 @@ func logDebug(format string, v ...interface{}) {
 const (
 	selectTransactionQuery = "SELECT pid, src_user_id, dst_user_id, src_wallet_id, dst_wallet_id, src_account_id, dst_account_id, src_account_type, dst_account_type, final_dst_merchant_wallet_id, amount FROM transaction WHERE pid = ?"
 	insertTransactionQuery = "INSERT INTO transaction (pid, src_user_id, dst_user_id, src_wallet_id, dst_wallet_id, src_account_id, dst_account_id, src_account_type, dst_account_type, final_dst_merchant_wallet_id, amount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+	createWalletQuery      = "INSERT INTO wallet (user_id, wallet_type) VALUES (?, ?)"
+	createAccountQuery     = "INSERT INTO account (cents, account_type, wallet_id) VALUES (?, ?, ?)"
 )
 
 type Implementation struct {
@@ -258,6 +261,83 @@ func (i *Implementation) Capture(ctx context.Context, capturePayload *pb.Capture
 	return &emptypb.Empty{}, nil
 }
 
+func (i *Implementation) CreateAccount(ctx context.Context, createAccountPayload *pb.CreateAccountPayload) (*emptypb.Empty, error) {
+	logInfo("CreateAccount called with payload: %+v", createAccountPayload)
+
+	// Begin the transaction
+	tx, err := i.db.Begin()
+	if err != nil {
+		logInfo("CreateAccount failed: could not begin transaction: %v", err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	// Create wallet
+	walletId, err := createWallet(tx, createAccountPayload.EmailAddress, createAccountPayload.WalletType)
+	if err != nil {
+		logInfo("Create Account failed: createWallet error: %v", err)
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			fmt.Printf("Create Account failed: could not rollback after createWallet error: %v\n", rollbackErr)
+			return nil, status.Error(codes.Internal, rollbackErr.Error())
+		}
+		return nil, err
+	}
+
+	//  Determine account type
+	if createAccountPayload.WalletType == pb.WalletType_CUSTOMER {
+		//  Create Customer DEFAULT Account
+		err = createAccount(tx, createAccountPayload.InitialBalanceCents, "DEFAULT", int64(walletId))
+		if err != nil {
+			logInfo("Create Account failed: createAccount error: %v", err)
+			rollbackErr := tx.Rollback()
+			if rollbackErr != nil {
+				fmt.Printf("Create Account failed: could not rollback after createAccount error: %v\n", rollbackErr)
+				return nil, status.Error(codes.Internal, rollbackErr.Error())
+			}
+			return nil, err
+		}
+		//  Create Customer PAYMENT Account
+		err = createAccount(tx, 0, "PAYMENT", int64(walletId))
+		if err != nil {
+			logInfo("Create Account failed: createAccount error: %v", err)
+			rollbackErr := tx.Rollback()
+			if rollbackErr != nil {
+				fmt.Printf("Create Account failed: could not rollback after createAccount error: %v\n", rollbackErr)
+				return nil, status.Error(codes.Internal, rollbackErr.Error())
+			}
+			return nil, err
+		}
+
+	} else {
+		//  Create Merchant INCOMING Account
+		err = createAccount(tx, 0, "INCOMING", int64(walletId))
+		if err != nil {
+			logInfo("Create Account failed: createAccount error: %v", err)
+			rollbackErr := tx.Rollback()
+			if rollbackErr != nil {
+				fmt.Printf("Create Account failed: could not rollback after createAccount error: %v\n", rollbackErr)
+				return nil, status.Error(codes.Internal, rollbackErr.Error())
+			}
+			return nil, err
+		}
+	}
+
+	// Commit tx
+	err = tx.Commit()
+	if err != nil {
+		logInfo("Create Account failed: commit error: %v", err)
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			fmt.Printf("Create Account failed: could not rollback after commit error: %v\n", rollbackErr)
+			return nil, status.Error(codes.Internal, rollbackErr.Error())
+		}
+		return nil, err
+	}
+
+	logInfo("CreateAccount succeeded: %s %s", pb.WalletType.String(createAccountPayload.WalletType), createAccountPayload.EmailAddress)
+	return &emptypb.Empty{}, nil
+}
+
 func (i *Implementation) CheckBalance(ctx context.Context, checkBalancePayload *pb.CheckBalancePayload) (*pb.CheckBalanceResponse, error) {
 	logInfo("CheckBalance called with payload: %+v", checkBalancePayload)
 	// Begin the transaction
@@ -422,6 +502,60 @@ func createTransaction(tx *sql.Tx, pid string, srcAccount account, dstAccount ac
 
 	_, err = stmt.Exec(pid, srcWallet.userID, dstWallet.userID, srcWallet.ID, dstWallet.ID, srcAccount.ID, dstAccount.ID, srcAccount.accountType, dstAccount.accountType, finalDstWallet.ID, amount)
 	if err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	return nil
+}
+
+func createWallet(tx *sql.Tx, emailAddress string, walletType pb.WalletType) (int64, error) {
+
+	stmt, err := tx.Prepare(createWalletQuery)
+	if err != nil {
+		return -1, status.Error(codes.Internal, err.Error())
+	}
+	defer stmt.Close()
+
+	// Convert enum to string before insert
+	var walletTypeStr string
+	switch walletType {
+	case pb.WalletType_CUSTOMER:
+		walletTypeStr = "CUSTOMER"
+	case pb.WalletType_MERCHANT:
+		walletTypeStr = "MERCHANT"
+	default:
+		walletTypeStr = "UNKNOWN"
+	}
+
+	result, err := stmt.Exec(emailAddress, walletTypeStr)
+	if err != nil {
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == 1062 {
+			return -1, status.Error(codes.AlreadyExists, "wallet already exists")
+		}
+		return -1, status.Error(codes.Internal, err.Error())
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return -1, status.Error(codes.Internal, err.Error())
+	}
+
+	return id, nil
+}
+
+func createAccount(tx *sql.Tx, amount int64, accountType string, walletId int64) error {
+
+	stmt, err := tx.Prepare(createAccountQuery)
+	if err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(amount, accountType, walletId)
+	if err != nil {
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == 1062 {
+			return status.Error(codes.AlreadyExists, "account already exists")
+		}
 		return status.Error(codes.Internal, err.Error())
 	}
 

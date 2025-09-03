@@ -22,6 +22,52 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type WalletType int32
+
+const (
+	WalletType_CUSTOMER WalletType = 0
+	WalletType_MERCHANT WalletType = 1
+)
+
+// Enum value maps for WalletType.
+var (
+	WalletType_name = map[int32]string{
+		0: "CUSTOMER",
+		1: "MERCHANT",
+	}
+	WalletType_value = map[string]int32{
+		"CUSTOMER": 0,
+		"MERCHANT": 1,
+	}
+)
+
+func (x WalletType) Enum() *WalletType {
+	p := new(WalletType)
+	*p = x
+	return p
+}
+
+func (x WalletType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (WalletType) Descriptor() protoreflect.EnumDescriptor {
+	return file_money_movement_proto_money_movement_svc_proto_enumTypes[0].Descriptor()
+}
+
+func (WalletType) Type() protoreflect.EnumType {
+	return &file_money_movement_proto_money_movement_svc_proto_enumTypes[0]
+}
+
+func (x WalletType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use WalletType.Descriptor instead.
+func (WalletType) EnumDescriptor() ([]byte, []int) {
+	return file_money_movement_proto_money_movement_svc_proto_rawDescGZIP(), []int{0}
+}
+
 type AuthorizePayload struct {
 	state                protoimpl.MessageState `protogen:"open.v1"`
 	CustomerWalletUserId string                 `protobuf:"bytes,1,opt,name=customerWalletUserId,proto3" json:"customerWalletUserId,omitempty"`
@@ -266,6 +312,74 @@ func (x *CheckBalanceResponse) GetBalanceCents() int64 {
 	return 0
 }
 
+type CreateAccountPayload struct {
+	state                  protoimpl.MessageState `protogen:"open.v1"`
+	EmailAddress           string                 `protobuf:"bytes,1,opt,name=emailAddress,proto3" json:"emailAddress,omitempty"`
+	WalletType             WalletType             `protobuf:"varint,2,opt,name=walletType,proto3,enum=WalletType" json:"walletType,omitempty"`
+	InitialBalanceCurrency string                 `protobuf:"bytes,3,opt,name=initialBalanceCurrency,proto3" json:"initialBalanceCurrency,omitempty"`
+	InitialBalanceCents    int64                  `protobuf:"varint,4,opt,name=initialBalanceCents,proto3" json:"initialBalanceCents,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *CreateAccountPayload) Reset() {
+	*x = CreateAccountPayload{}
+	mi := &file_money_movement_proto_money_movement_svc_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateAccountPayload) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateAccountPayload) ProtoMessage() {}
+
+func (x *CreateAccountPayload) ProtoReflect() protoreflect.Message {
+	mi := &file_money_movement_proto_money_movement_svc_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateAccountPayload.ProtoReflect.Descriptor instead.
+func (*CreateAccountPayload) Descriptor() ([]byte, []int) {
+	return file_money_movement_proto_money_movement_svc_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *CreateAccountPayload) GetEmailAddress() string {
+	if x != nil {
+		return x.EmailAddress
+	}
+	return ""
+}
+
+func (x *CreateAccountPayload) GetWalletType() WalletType {
+	if x != nil {
+		return x.WalletType
+	}
+	return WalletType_CUSTOMER
+}
+
+func (x *CreateAccountPayload) GetInitialBalanceCurrency() string {
+	if x != nil {
+		return x.InitialBalanceCurrency
+	}
+	return ""
+}
+
+func (x *CreateAccountPayload) GetInitialBalanceCents() int64 {
+	if x != nil {
+		return x.InitialBalanceCents
+	}
+	return 0
+}
+
 var File_money_movement_proto_money_movement_svc_proto protoreflect.FileDescriptor
 
 const file_money_movement_proto_money_movement_svc_proto_rawDesc = "" +
@@ -283,11 +397,23 @@ const file_money_movement_proto_money_movement_svc_proto_rawDesc = "" +
 	"\x13CheckBalancePayload\x12\x16\n" +
 	"\x06userId\x18\x01 \x01(\tR\x06userId\":\n" +
 	"\x14CheckBalanceResponse\x12\"\n" +
-	"\fbalanceCents\x18\x01 \x01(\x03R\fbalanceCents2\xbb\x01\n" +
+	"\fbalanceCents\x18\x01 \x01(\x03R\fbalanceCents\"\xd1\x01\n" +
+	"\x14CreateAccountPayload\x12\"\n" +
+	"\femailAddress\x18\x01 \x01(\tR\femailAddress\x12+\n" +
+	"\n" +
+	"walletType\x18\x02 \x01(\x0e2\v.WalletTypeR\n" +
+	"walletType\x126\n" +
+	"\x16initialBalanceCurrency\x18\x03 \x01(\tR\x16initialBalanceCurrency\x120\n" +
+	"\x13initialBalanceCents\x18\x04 \x01(\x03R\x13initialBalanceCents*(\n" +
+	"\n" +
+	"WalletType\x12\f\n" +
+	"\bCUSTOMER\x10\x00\x12\f\n" +
+	"\bMERCHANT\x10\x012\xfb\x01\n" +
 	"\x14MoneyMovementService\x122\n" +
 	"\tAuthorize\x12\x11.AuthorizePayload\x1a\x12.AuthorizeResponse\x122\n" +
 	"\aCapture\x12\x0f.CapturePayload\x1a\x16.google.protobuf.Empty\x12;\n" +
-	"\fCheckBalance\x12\x14.CheckBalancePayload\x1a\x15.CheckBalanceResponseBCZAgithub.com/andreistefanciprian/gomicropay/money_movement/proto/pbb\x06proto3"
+	"\fCheckBalance\x12\x14.CheckBalancePayload\x1a\x15.CheckBalanceResponse\x12>\n" +
+	"\rCreateAccount\x12\x15.CreateAccountPayload\x1a\x16.google.protobuf.EmptyBCZAgithub.com/andreistefanciprian/gomicropay/money_movement/proto/pbb\x06proto3"
 
 var (
 	file_money_movement_proto_money_movement_svc_proto_rawDescOnce sync.Once
@@ -301,27 +427,33 @@ func file_money_movement_proto_money_movement_svc_proto_rawDescGZIP() []byte {
 	return file_money_movement_proto_money_movement_svc_proto_rawDescData
 }
 
-var file_money_movement_proto_money_movement_svc_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_money_movement_proto_money_movement_svc_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_money_movement_proto_money_movement_svc_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_money_movement_proto_money_movement_svc_proto_goTypes = []any{
-	(*AuthorizePayload)(nil),     // 0: AuthorizePayload
-	(*CapturePayload)(nil),       // 1: CapturePayload
-	(*AuthorizeResponse)(nil),    // 2: AuthorizeResponse
-	(*CheckBalancePayload)(nil),  // 3: CheckBalancePayload
-	(*CheckBalanceResponse)(nil), // 4: CheckBalanceResponse
-	(*emptypb.Empty)(nil),        // 5: google.protobuf.Empty
+	(WalletType)(0),              // 0: WalletType
+	(*AuthorizePayload)(nil),     // 1: AuthorizePayload
+	(*CapturePayload)(nil),       // 2: CapturePayload
+	(*AuthorizeResponse)(nil),    // 3: AuthorizeResponse
+	(*CheckBalancePayload)(nil),  // 4: CheckBalancePayload
+	(*CheckBalanceResponse)(nil), // 5: CheckBalanceResponse
+	(*CreateAccountPayload)(nil), // 6: CreateAccountPayload
+	(*emptypb.Empty)(nil),        // 7: google.protobuf.Empty
 }
 var file_money_movement_proto_money_movement_svc_proto_depIdxs = []int32{
-	0, // 0: MoneyMovementService.Authorize:input_type -> AuthorizePayload
-	1, // 1: MoneyMovementService.Capture:input_type -> CapturePayload
-	3, // 2: MoneyMovementService.CheckBalance:input_type -> CheckBalancePayload
-	2, // 3: MoneyMovementService.Authorize:output_type -> AuthorizeResponse
-	5, // 4: MoneyMovementService.Capture:output_type -> google.protobuf.Empty
-	4, // 5: MoneyMovementService.CheckBalance:output_type -> CheckBalanceResponse
-	3, // [3:6] is the sub-list for method output_type
-	0, // [0:3] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	0, // 0: CreateAccountPayload.walletType:type_name -> WalletType
+	1, // 1: MoneyMovementService.Authorize:input_type -> AuthorizePayload
+	2, // 2: MoneyMovementService.Capture:input_type -> CapturePayload
+	4, // 3: MoneyMovementService.CheckBalance:input_type -> CheckBalancePayload
+	6, // 4: MoneyMovementService.CreateAccount:input_type -> CreateAccountPayload
+	3, // 5: MoneyMovementService.Authorize:output_type -> AuthorizeResponse
+	7, // 6: MoneyMovementService.Capture:output_type -> google.protobuf.Empty
+	5, // 7: MoneyMovementService.CheckBalance:output_type -> CheckBalanceResponse
+	7, // 8: MoneyMovementService.CreateAccount:output_type -> google.protobuf.Empty
+	5, // [5:9] is the sub-list for method output_type
+	1, // [1:5] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_money_movement_proto_money_movement_svc_proto_init() }
@@ -334,13 +466,14 @@ func file_money_movement_proto_money_movement_svc_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_money_movement_proto_money_movement_svc_proto_rawDesc), len(file_money_movement_proto_money_movement_svc_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   5,
+			NumEnums:      1,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_money_movement_proto_money_movement_svc_proto_goTypes,
 		DependencyIndexes: file_money_movement_proto_money_movement_svc_proto_depIdxs,
+		EnumInfos:         file_money_movement_proto_money_movement_svc_proto_enumTypes,
 		MessageInfos:      file_money_movement_proto_money_movement_svc_proto_msgTypes,
 	}.Build()
 	File_money_movement_proto_money_movement_svc_proto = out.File
