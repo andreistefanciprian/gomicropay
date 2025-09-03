@@ -64,7 +64,10 @@ bash test_transaction.sh
 docker run -it --network gomicropay_default --rm mysql mysql -hmysql-money-movement -u root -p
 
 # Connect to MySQL databases from your laptop's CLI
-docker run -it --network host --rm mysql mysql -h127.0.0.1 -P 33062 -u root -p
+docker run -it --network host --rm mysql mysql -h127.0.0.1 -P 33061 -u root -pAdmin123 -e 'select * from auth.registered_users;'
+docker run -it --network host --rm mysql mysql -h127.0.0.1 -P 33062 -u root -pAdmin123 -e \
+'select * from money_movement.wallet; select * from money_movement.account; select * from money_movement.transaction;'
+docker run -it --network host --rm mysql mysql -h127.0.0.1 -P 33063 -u root -pAdmin123 -e 'select * from ledger.ledger;'
 
 # Remove all services
 docker compose down --remove-orphans

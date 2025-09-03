@@ -20,9 +20,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	MoneyMovementService_Authorize_FullMethodName    = "/MoneyMovementService/Authorize"
-	MoneyMovementService_Capture_FullMethodName      = "/MoneyMovementService/Capture"
-	MoneyMovementService_CheckBalance_FullMethodName = "/MoneyMovementService/CheckBalance"
+	MoneyMovementService_Authorize_FullMethodName     = "/MoneyMovementService/Authorize"
+	MoneyMovementService_Capture_FullMethodName       = "/MoneyMovementService/Capture"
+	MoneyMovementService_CheckBalance_FullMethodName  = "/MoneyMovementService/CheckBalance"
+	MoneyMovementService_CreateAccount_FullMethodName = "/MoneyMovementService/CreateAccount"
 )
 
 // MoneyMovementServiceClient is the client API for MoneyMovementService service.
@@ -32,6 +33,7 @@ type MoneyMovementServiceClient interface {
 	Authorize(ctx context.Context, in *AuthorizePayload, opts ...grpc.CallOption) (*AuthorizeResponse, error)
 	Capture(ctx context.Context, in *CapturePayload, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	CheckBalance(ctx context.Context, in *CheckBalancePayload, opts ...grpc.CallOption) (*CheckBalanceResponse, error)
+	CreateAccount(ctx context.Context, in *CreateAccountPayload, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type moneyMovementServiceClient struct {
@@ -72,6 +74,16 @@ func (c *moneyMovementServiceClient) CheckBalance(ctx context.Context, in *Check
 	return out, nil
 }
 
+func (c *moneyMovementServiceClient) CreateAccount(ctx context.Context, in *CreateAccountPayload, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MoneyMovementService_CreateAccount_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MoneyMovementServiceServer is the server API for MoneyMovementService service.
 // All implementations must embed UnimplementedMoneyMovementServiceServer
 // for forward compatibility.
@@ -79,6 +91,7 @@ type MoneyMovementServiceServer interface {
 	Authorize(context.Context, *AuthorizePayload) (*AuthorizeResponse, error)
 	Capture(context.Context, *CapturePayload) (*emptypb.Empty, error)
 	CheckBalance(context.Context, *CheckBalancePayload) (*CheckBalanceResponse, error)
+	CreateAccount(context.Context, *CreateAccountPayload) (*emptypb.Empty, error)
 	mustEmbedUnimplementedMoneyMovementServiceServer()
 }
 
@@ -97,6 +110,9 @@ func (UnimplementedMoneyMovementServiceServer) Capture(context.Context, *Capture
 }
 func (UnimplementedMoneyMovementServiceServer) CheckBalance(context.Context, *CheckBalancePayload) (*CheckBalanceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CheckBalance not implemented")
+}
+func (UnimplementedMoneyMovementServiceServer) CreateAccount(context.Context, *CreateAccountPayload) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateAccount not implemented")
 }
 func (UnimplementedMoneyMovementServiceServer) mustEmbedUnimplementedMoneyMovementServiceServer() {}
 func (UnimplementedMoneyMovementServiceServer) testEmbeddedByValue()                              {}
@@ -173,6 +189,24 @@ func _MoneyMovementService_CheckBalance_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MoneyMovementService_CreateAccount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateAccountPayload)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MoneyMovementServiceServer).CreateAccount(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MoneyMovementService_CreateAccount_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MoneyMovementServiceServer).CreateAccount(ctx, req.(*CreateAccountPayload))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MoneyMovementService_ServiceDesc is the grpc.ServiceDesc for MoneyMovementService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -191,6 +225,10 @@ var MoneyMovementService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CheckBalance",
 			Handler:    _MoneyMovementService_CheckBalance_Handler,
+		},
+		{
+			MethodName: "CreateAccount",
+			Handler:    _MoneyMovementService_CreateAccount_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

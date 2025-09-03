@@ -83,6 +83,7 @@ func main() {
 
 	http.HandleFunc("/register", register)
 	http.HandleFunc("/login", login)
+	http.HandleFunc("/create-account", createAccount)
 	http.HandleFunc("/customer/payment/authorize", customerPaymentAuthorize)
 	http.HandleFunc("/customer/payment/capture", customerPaymentCapture)
 	http.HandleFunc("/checkbalance", checkBalance)
@@ -443,6 +444,77 @@ func customerPaymentCapture(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	logInfo("Capture succeeded")
+	w.WriteHeader(http.StatusOK)
+}
+
+func createAccount(w http.ResponseWriter, r *http.Request) {
+	logInfo("createAccount handler called")
+
+	// Check user has valid JWT Token in Authorisation Header
+	ctx := context.Background()
+	err := checkAuthHeader(ctx, r)
+	if err != nil {
+		logInfo("Authorization failed: %v", err)
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	type createAccountPayload struct {
+		EmailAddress           string `json:"email_address"`
+		WalletType             string `json:"wallet_type"`
+		InitialBalanceCents    int64  `json:"initial_balance_cents"`
+		InitialBalanceCurrency string `json:"initial_balance_currency"`
+	}
+
+	var payload createAccountPayload
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("Failed to read request body: %v", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	logDebug("Request body: %s", string(body))
+	err = json.Unmarshal(body, &payload)
+	if err != nil {
+		logInfo("Failed to unmarshal payload: %v", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	// Validate WalletType is either CUSTOMER or MERCHANT
+	var walletTypeEnum mmpb.WalletType
+	switch strings.ToUpper(payload.WalletType) {
+	case "CUSTOMER":
+		walletTypeEnum = mmpb.WalletType_CUSTOMER
+	case "MERCHANT":
+		walletTypeEnum = mmpb.WalletType_MERCHANT
+	default:
+		logInfo("Invalid WalletType: %v", payload.WalletType)
+		http.Error(w, "wallet_type must be CUSTOMER or MERCHANT", http.StatusBadRequest)
+		return
+	}
+
+	// Validate JWT token user is the same as payload.EmailAddress
+
+	// Create account
+	logDebug("Create Account payload: %+v", payload)
+	ctx = context.Background()
+	_, err = mmClient.CreateAccount(ctx, &mmpb.CreateAccountPayload{
+		EmailAddress:           payload.EmailAddress,
+		WalletType:             walletTypeEnum,
+		InitialBalanceCents:    payload.InitialBalanceCents,
+		InitialBalanceCurrency: payload.InitialBalanceCurrency,
+	})
+	if err != nil {
+		logInfo("Create Account failed: %v", err)
+		_, writeErr := w.Write([]byte(err.Error()))
+		if writeErr != nil {
+			log.Println(writeErr)
+		}
+		return
+	}
+	logInfo("Create Account succeeded")
 	w.WriteHeader(http.StatusOK)
 }
 
