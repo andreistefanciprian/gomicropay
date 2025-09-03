@@ -4,10 +4,10 @@ import (
 	"fmt"
 )
 
-func Send(target, orderID string) error {
+func Send(emailAddress, orderID string) error {
 	// Simulate sending an email
 	// In a real-world scenario, integrate with an email service provider here
-	fmt.Printf("Sending email to %s about order %s\n", target, orderID)
+	fmt.Printf("Sending email to %s about order %s\n", emailAddress, orderID)
 
 	// senderEmail := "no-reply@example.com"
 	// password := "examplepassword" // In real scenarios, use environment variables or secure vaults

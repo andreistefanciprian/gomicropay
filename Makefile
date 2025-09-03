@@ -15,6 +15,10 @@ proto-auth:
 	--go-grpc_out=paths=source_relative:. \
 	./auth/proto/auth_svc.proto
 
+	@protoc \
+	--go_out=paths=source_relative:./api_gateway/ \
+	--go-grpc_out=paths=source_relative:./api_gateway/ \
+	./auth/proto/auth_svc.proto
 docker-auth:
 	@docker build -t andreistefanciprian/gomicropay-auth:latest -f auth/infra/Dockerfile auth/
 	@docker push andreistefanciprian/gomicropay-auth:latest
@@ -28,6 +32,11 @@ proto-money-movement:
 	@protoc \
 	--go_out=paths=source_relative:. \
 	--go-grpc_out=paths=source_relative:. \
+	./money_movement/proto/money_movement_svc.proto
+
+	@protoc \
+	--go_out=paths=source_relative:./api_gateway/ \
+	--go-grpc_out=paths=source_relative:./api_gateway/ \
 	./money_movement/proto/money_movement_svc.proto
 docker-money-movement:
 	@docker build -t andreistefanciprian/gomicropay-money-movement:latest -f money_movement/infra/Dockerfile money_movement/

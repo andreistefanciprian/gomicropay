@@ -58,7 +58,7 @@ create_merchant_account() {
 authorize_payment() {
     echo
     echo "========== [Step 5] Authorizing payment =========="
-    AUTHORIZE_PAYLOAD="{\"customer_wallet_user_id\": \"$CUSTOMER_EMAIL_ADDRESS\", \"merchant_wallet_user_id\": \"$MERCHANT_EMAIL_ADDRESS\", \"cents\": 1000, \"currency\": \"USD\"}"
+    AUTHORIZE_PAYLOAD="{\"customer_email_address\": \"$CUSTOMER_EMAIL_ADDRESS\", \"merchant_email_address\": \"$MERCHANT_EMAIL_ADDRESS\", \"cents\": 1000, \"currency\": \"USD\"}"
     echo "Authorize payload: $AUTHORIZE_PAYLOAD"
     pid=$(curl -s -X POST -H "Authorization: Bearer $JWT_TOKEN" -H "Content-Type: application/json" -d "$AUTHORIZE_PAYLOAD" http://localhost:8080/customer/payment/authorize | jq -r .pid)
     echo "Payment authorized. PID: $pid"
@@ -76,7 +76,7 @@ capture_payment() {
 check_balance() {
     echo
     echo "========== [Step 7] Checking balance =========="
-    BALANCE_PAYLOAD="{\"wallet_user_id\": \"$CUSTOMER_EMAIL_ADDRESS\"}"
+    BALANCE_PAYLOAD="{\"email_address\": \"$CUSTOMER_EMAIL_ADDRESS\"}"
     echo "Balance payload: $BALANCE_PAYLOAD"
     BALANCE_RESPONSE=$(curl -s -X POST -H "Authorization: Bearer $JWT_TOKEN" -d "$BALANCE_PAYLOAD" http://localhost:8080/checkbalance)
     echo "Balance response: $BALANCE_RESPONSE"

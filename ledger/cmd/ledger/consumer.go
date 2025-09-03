@@ -38,11 +38,11 @@ var (
 )
 
 type LedgerMsg struct {
-	OrderID   string `json:"order_id"`
-	UserID    string `json:"user_id"`
-	Amount    int64  `json:"amount"`
-	Operation string `json:"operation"`
-	Date      string `json:"date"`
+	OrderID              string `json:"order_id"`
+	CustomerEmailAddress string `json:"customer_email_address"`
+	Amount               int64  `json:"amount"`
+	Operation            string `json:"operation"`
+	Date                 string `json:"date"`
 }
 
 func main() {
@@ -145,10 +145,10 @@ func handleMessage(msg *sarama.ConsumerMessage) {
 		return
 	}
 	logDebug("LedgerMsg unmarshalled: %+v", ledgerlMsg)
-	err := ledger.Insert(db, ledgerlMsg.OrderID, ledgerlMsg.UserID, ledgerlMsg.Amount, ledgerlMsg.Operation, ledgerlMsg.Date)
+	err := ledger.Insert(db, ledgerlMsg.OrderID, ledgerlMsg.CustomerEmailAddress, ledgerlMsg.Amount, ledgerlMsg.Operation, ledgerlMsg.Date)
 	if err != nil {
 		logInfo("Error inserting ledger message: %v", err)
 		return
 	}
-	logInfo("Ledger message inserted for order %s, user %s", ledgerlMsg.OrderID, ledgerlMsg.UserID)
+	logInfo("Ledger message inserted for order %s, customer email %s", ledgerlMsg.OrderID, ledgerlMsg.CustomerEmailAddress)
 }
