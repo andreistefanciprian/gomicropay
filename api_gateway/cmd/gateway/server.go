@@ -97,6 +97,7 @@ func main() {
 
 func register(w http.ResponseWriter, r *http.Request) {
 	logInfo("register handler called")
+	ctx := context.Background()
 
 	var req struct {
 		FirstName string `json:"first_name"`
@@ -135,7 +136,7 @@ func register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//  Check if user exists
-	userExistsResp, err := authClient.CheckUserExists(context.Background(), &authpb.UserEmailAddress{UserEmail: req.Email})
+	userExistsResp, err := authClient.CheckUserExists(ctx, &authpb.UserEmailAddress{UserEmail: req.Email})
 	if err != nil {
 		logInfo("Failed to check if user exists: %v", err)
 		http.Error(w, "Failed to check if user exists", http.StatusInternalServerError)
@@ -165,7 +166,7 @@ func register(w http.ResponseWriter, r *http.Request) {
 
 	logDebug("User registration data: %+v", userRegistrationData)
 
-	response, err := authClient.RegisterUser(context.Background(), userRegistrationData)
+	response, err := authClient.RegisterUser(ctx, userRegistrationData)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -188,6 +189,7 @@ func register(w http.ResponseWriter, r *http.Request) {
 
 func login(w http.ResponseWriter, r *http.Request) {
 	logInfo("userLogin handler called")
+	ctx := context.Background()
 
 	var req struct {
 		Email    string `json:"email"`
@@ -208,7 +210,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//  Check if user exists
-	userExistsResp, err := authClient.CheckUserExists(context.Background(), &authpb.UserEmailAddress{UserEmail: req.Email})
+	userExistsResp, err := authClient.CheckUserExists(ctx, &authpb.UserEmailAddress{UserEmail: req.Email})
 	if err != nil {
 		logInfo("Failed to check if user exists: %v", err)
 		http.Error(w, "Failed to check if user exists", http.StatusInternalServerError)
@@ -221,7 +223,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get password hash from auth service
-	hashedPassword, err := authClient.RetrieveHashedPassword(context.Background(), &authpb.UserEmailAddress{UserEmail: req.Email})
+	hashedPassword, err := authClient.RetrieveHashedPassword(ctx, &authpb.UserEmailAddress{UserEmail: req.Email})
 	if err != nil {
 		logInfo("Failed to retrieve hashed password: %v", err)
 		http.Error(w, "Failed to retrieve hashed password", http.StatusInternalServerError)
@@ -236,7 +238,6 @@ func login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Generate JWT token
-	ctx := context.Background()
 	token, err := authClient.GenerateToken(ctx, &authpb.UserEmailAddress{UserEmail: req.Email})
 	if err != nil {
 		logInfo("GenerateToken failed: %v", err)
@@ -256,9 +257,9 @@ func login(w http.ResponseWriter, r *http.Request) {
 
 func checkBalance(w http.ResponseWriter, r *http.Request) {
 	logInfo("checkBalance called")
+	ctx := context.Background()
 
 	// Check user has valid JWT Token in Authorisation Header
-	ctx := context.Background()
 	err := checkAuthHeader(ctx, r)
 	if err != nil {
 		logInfo("Authorization failed: %v", err)
@@ -288,7 +289,6 @@ func checkBalance(w http.ResponseWriter, r *http.Request) {
 	}
 
 	logDebug("checkBalance payload: %+v", payload)
-	ctx = context.Background()
 	authorizedResponse, err := mmClient.CheckBalance(ctx, &mmpb.CheckBalancePayload{
 		EmailAddress: payload.EmailAddress,
 	})
@@ -326,9 +326,9 @@ func checkBalance(w http.ResponseWriter, r *http.Request) {
 
 func customerPaymentAuthorize(w http.ResponseWriter, r *http.Request) {
 	logInfo("customerPaymentAuthorize called")
+	ctx := context.Background()
 
 	// Check user has valid JWT Token in Authorisation Header
-	ctx := context.Background()
 	err := checkAuthHeader(ctx, r)
 	if err != nil {
 		logInfo("Authorization failed: %v", err)
@@ -361,7 +361,6 @@ func customerPaymentAuthorize(w http.ResponseWriter, r *http.Request) {
 	}
 
 	logDebug("Authorize payload: %+v", payload)
-	ctx = context.Background()
 	authorizedResponse, err := mmClient.Authorize(ctx, &mmpb.AuthorizePayload{
 		CustomerEmailAddress: payload.CustomerEmailAddress,
 		MerchantEmailAddress: payload.MerchantEmailAddress,
@@ -401,9 +400,9 @@ func customerPaymentAuthorize(w http.ResponseWriter, r *http.Request) {
 
 func customerPaymentCapture(w http.ResponseWriter, r *http.Request) {
 	logInfo("customerPaymentCapture handler called")
+	ctx := context.Background()
 
 	// Check user has valid JWT Token in Authorisation Header
-	ctx := context.Background()
 	err := checkAuthHeader(ctx, r)
 	if err != nil {
 		logInfo("Authorization failed: %v", err)
@@ -433,7 +432,6 @@ func customerPaymentCapture(w http.ResponseWriter, r *http.Request) {
 	}
 
 	logDebug("Capture payload: %+v", payload)
-	ctx = context.Background()
 	_, err = mmClient.Capture(ctx, &mmpb.CapturePayload{Pid: payload.Pid})
 	if err != nil {
 		logInfo("Money movement capture failed: %v", err)
@@ -449,9 +447,9 @@ func customerPaymentCapture(w http.ResponseWriter, r *http.Request) {
 
 func createAccount(w http.ResponseWriter, r *http.Request) {
 	logInfo("createAccount handler called")
+	ctx := context.Background()
 
 	// Check user has valid JWT Token in Authorisation Header
-	ctx := context.Background()
 	err := checkAuthHeader(ctx, r)
 	if err != nil {
 		logInfo("Authorization failed: %v", err)
@@ -499,7 +497,6 @@ func createAccount(w http.ResponseWriter, r *http.Request) {
 
 	// Create account
 	logDebug("Create Account payload: %+v", payload)
-	ctx = context.Background()
 	_, err = mmClient.CreateAccount(ctx, &mmpb.CreateAccountPayload{
 		EmailAddress:           payload.EmailAddress,
 		WalletType:             walletTypeEnum,
