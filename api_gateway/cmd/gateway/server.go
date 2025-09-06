@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 
 	authpb "github.com/andreistefanciprian/gomicropay/api_gateway/auth/proto"
@@ -100,7 +101,18 @@ func main() {
 
 	// money movement connection
 	log.Printf("Connecting to Money Movement service at %s", moneyMovementAddress)
-	mmConn, err := grpc.NewClient(moneyMovementAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	mmConn, err := grpc.NewClient(
+		moneyMovementAddress,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithStatsHandler(
+			otelgrpc.NewClientHandler(
+				// Optional knobs:
+				otelgrpc.WithTracerProvider(tp),
+				otelgrpc.WithPropagators(propagation.TraceContext{}),
+			// otelgrpc.WithMessageEvents(otelgrpc.ReceivedEvents, otelgrpc.SentEvents),
+			),
+		),
+	)
 	if err != nil {
 		log.Fatalf("Failed to connect to Money Movement service at %s: %v", moneyMovementAddress, err)
 	}
@@ -143,7 +155,7 @@ func (a *Application) register(w http.ResponseWriter, r *http.Request) {
 		Password  string `json:"password"`
 	}
 	span.SetAttributes(
-		attribute.String("user_email", req.Email),
+		attribute.String("email", req.Email),
 	)
 
 	err := json.NewDecoder(r.Body).Decode(&req)
@@ -249,6 +261,10 @@ func (a *Application) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	span.SetAttributes(
+		attribute.String("email", req.Email),
+	)
+
 	// Verify Blank fields
 	if req.Email == "" || req.Password == "" {
 		a.logInfo("One or more required fields are blank")
@@ -339,6 +355,10 @@ func (a *Application) checkBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	span.SetAttributes(
+		attribute.String("email", payload.EmailAddress),
+	)
+
 	a.logDebug("checkBalance payload: %+v", payload)
 	authorizedResponse, err := a.mmClient.CheckBalance(ctx, &mmpb.CheckBalancePayload{
 		EmailAddress: payload.EmailAddress,
@@ -415,6 +435,13 @@ func (a *Application) customerPaymentAuthorize(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	span.SetAttributes(
+		attribute.String("customer_email", payload.CustomerEmailAddress),
+		attribute.String("merchant_email", payload.MerchantEmailAddress),
+		attribute.String("cents", strconv.Itoa(int(payload.Cents))),
+		attribute.String("currency", payload.Currency),
+	)
+
 	a.logDebug("Authorize payload: %+v", payload)
 	authorizedResponse, err := a.mmClient.Authorize(ctx, &mmpb.AuthorizePayload{
 		CustomerEmailAddress: payload.CustomerEmailAddress,
@@ -490,6 +517,11 @@ func (a *Application) customerPaymentCapture(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	span.SetAttributes(
+		attribute.String("pid", payload.Pid),
+	)
+
+	// Capture payment
 	a.logDebug("Capture payload: %+v", payload)
 	_, err = a.mmClient.Capture(ctx, &mmpb.CapturePayload{Pid: payload.Pid})
 	if err != nil {
@@ -556,6 +588,13 @@ func (a *Application) createAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	span.SetAttributes(
+		attribute.String("email", payload.EmailAddress),
+		attribute.String("wallet_type", payload.WalletType),
+		attribute.String("initial_balance_cents", strconv.Itoa(int(payload.InitialBalanceCents))),
+		attribute.String("initial_balance_currency", payload.InitialBalanceCurrency),
+	)
+
 	// Validate JWT token user is the same as payload.EmailAddress
 
 	// Create account
@@ -598,14 +637,12 @@ func (a *Application) checkAuthHeader(context context.Context, r *http.Request) 
 	}
 
 	// Validate the token
-	email, err := a.validateToken(context, token)
+	_, err := a.validateToken(context, token)
 	if err != nil {
 		a.logInfo("Token validation failed: %v", err)
 		return status.Error(codes.Unauthenticated, "invalid token")
 	}
 
-	// Token is valid
-	a.logDebug("%s Token  is valid", email.UserEmail)
 	return nil
 }
 
@@ -619,5 +656,12 @@ func (a *Application) validateToken(context context.Context, token string) (*aut
 		a.logInfo("Token validation failed: %v", err)
 		return email, status.Error(codes.Unauthenticated, "invalid token")
 	}
+
+	span.SetAttributes(
+		attribute.String("email", email.UserEmail),
+	)
+
+	a.logDebug("Token is valid for user: %s", email.UserEmail)
+
 	return email, nil
 }
