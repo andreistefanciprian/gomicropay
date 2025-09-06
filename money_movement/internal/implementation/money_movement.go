@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/IBM/sarama"
 	"github.com/andreistefanciprian/gomicropay/money_movement/internal/producer"
@@ -13,6 +14,8 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/gogo/status"
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -50,16 +53,28 @@ type Implementation struct {
 	db       *sql.DB
 	producer sarama.SyncProducer
 	pb.UnimplementedMoneyMovementServiceServer
+	tracer trace.Tracer
 }
 
-func NewMoneyMovementImplementation(db *sql.DB, producer sarama.SyncProducer) *Implementation {
+func NewMoneyMovementImplementation(db *sql.DB, producer sarama.SyncProducer, tracer trace.Tracer) *Implementation {
 	return &Implementation{
 		db:       db,
 		producer: producer,
+		tracer:   tracer,
 	}
 }
 
 func (i *Implementation) Authorize(ctx context.Context, authorizePayload *pb.AuthorizePayload) (*pb.AuthorizeResponse, error) {
+	// Start a new span for tracing
+	ctx, span := i.tracer.Start(ctx, "Authorize")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("customer_email", authorizePayload.GetCustomerEmailAddress()),
+		attribute.String("customer_email", authorizePayload.GetMerchantEmailAddress()),
+		attribute.String("customer_email", strconv.Itoa(int(authorizePayload.GetCents()))),
+	)
+
 	logInfo("Authorize called with payload: %+v", authorizePayload)
 
 	if authorizePayload.GetCurrency() != "USD" {
@@ -73,7 +88,7 @@ func (i *Implementation) Authorize(ctx context.Context, authorizePayload *pb.Aut
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	merchantWallet, err := fetchWallet(tx, authorizePayload.MerchantEmailAddress)
+	merchantWallet, err := fetchWallet(ctx, tx, authorizePayload.MerchantEmailAddress)
 	if err != nil {
 		logInfo("Authorize failed: could not fetch merchant wallet: %v", err)
 		rollbackErr := tx.Rollback()
@@ -84,7 +99,7 @@ func (i *Implementation) Authorize(ctx context.Context, authorizePayload *pb.Aut
 		return nil, err
 	}
 
-	customerWallet, err := fetchWallet(tx, authorizePayload.CustomerEmailAddress)
+	customerWallet, err := fetchWallet(ctx, tx, authorizePayload.CustomerEmailAddress)
 	if err != nil {
 		logInfo("Authorize failed: could not fetch customer wallet: %v", err)
 		rollbackErr := tx.Rollback()
@@ -95,7 +110,7 @@ func (i *Implementation) Authorize(ctx context.Context, authorizePayload *pb.Aut
 		return nil, err
 	}
 
-	srcAccount, err := fetchAccount(tx, customerWallet.ID, "DEFAULT")
+	srcAccount, err := fetchAccount(ctx, tx, customerWallet.ID, "DEFAULT")
 	if err != nil {
 		logInfo("Authorize failed: could not fetch src account: %v", err)
 		rollbackErr := tx.Rollback()
@@ -106,7 +121,7 @@ func (i *Implementation) Authorize(ctx context.Context, authorizePayload *pb.Aut
 		return nil, err
 	}
 
-	dstAccount, err := fetchAccount(tx, customerWallet.ID, "PAYMENT")
+	dstAccount, err := fetchAccount(ctx, tx, customerWallet.ID, "PAYMENT")
 	if err != nil {
 		logInfo("Authorize failed: could not fetch dst account: %v", err)
 		rollbackErr := tx.Rollback()
@@ -118,7 +133,7 @@ func (i *Implementation) Authorize(ctx context.Context, authorizePayload *pb.Aut
 	}
 
 	logDebug("Authorize: transferring %d cents from srcAccount %d to dstAccount %d", authorizePayload.Cents, srcAccount.ID, dstAccount.ID)
-	err = transfer(tx, srcAccount, dstAccount, authorizePayload.Cents)
+	err = transfer(ctx, tx, srcAccount, dstAccount, authorizePayload.Cents)
 	if err != nil {
 		logInfo("Authorize failed: transfer error: %v", err)
 		rollbackErr := tx.Rollback()
@@ -131,7 +146,7 @@ func (i *Implementation) Authorize(ctx context.Context, authorizePayload *pb.Aut
 
 	pid := uuid.New().String()
 	logDebug("Authorize: creating transaction with pid %s", pid)
-	err = createTransaction(tx, pid, srcAccount, dstAccount, customerWallet, customerWallet, merchantWallet, authorizePayload.Cents)
+	err = createTransaction(ctx, tx, pid, srcAccount, dstAccount, customerWallet, customerWallet, merchantWallet, authorizePayload.Cents)
 	if err != nil {
 		logInfo("Authorize failed: createTransaction error: %v", err)
 		rollbackErr := tx.Rollback()
@@ -154,6 +169,12 @@ func (i *Implementation) Authorize(ctx context.Context, authorizePayload *pb.Aut
 }
 
 func (i *Implementation) Capture(ctx context.Context, capturePayload *pb.CapturePayload) (*emptypb.Empty, error) {
+	ctx, span := i.tracer.Start(ctx, "Capture")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("pid", capturePayload.GetPid()),
+	)
 	logInfo("Capture called with payload: %+v", capturePayload)
 	// Begin the transaction
 	tx, err := i.db.Begin()
@@ -162,7 +183,7 @@ func (i *Implementation) Capture(ctx context.Context, capturePayload *pb.Capture
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	authorizeTransaction, err := fetchTransaction(tx, capturePayload.Pid)
+	authorizeTransaction, err := fetchTransaction(ctx, tx, capturePayload.Pid)
 	if err != nil {
 		logInfo("Capture failed: could not fetch transaction: %v", err)
 		rollbackErr := tx.Rollback()
@@ -173,7 +194,7 @@ func (i *Implementation) Capture(ctx context.Context, capturePayload *pb.Capture
 		return nil, err
 	}
 
-	srcAccount, err := fetchAccount(tx, authorizeTransaction.dstAccountWalletID, "PAYMENT")
+	srcAccount, err := fetchAccount(ctx, tx, authorizeTransaction.dstAccountWalletID, "PAYMENT")
 	if err != nil {
 		logInfo("Capture failed: could not fetch src account: %v", err)
 		rollbackErr := tx.Rollback()
@@ -184,7 +205,7 @@ func (i *Implementation) Capture(ctx context.Context, capturePayload *pb.Capture
 		return nil, err
 	}
 
-	dstMerchantAccount, err := fetchAccount(tx, authorizeTransaction.finalDstMerchantWalletID, "INCOMING")
+	dstMerchantAccount, err := fetchAccount(ctx, tx, authorizeTransaction.finalDstMerchantWalletID, "INCOMING")
 	if err != nil {
 		logInfo("Capture failed: could not fetch dst merchant account: %v", err)
 		rollbackErr := tx.Rollback()
@@ -196,7 +217,7 @@ func (i *Implementation) Capture(ctx context.Context, capturePayload *pb.Capture
 	}
 
 	logDebug("Capture: transferring %d cents from srcAccount %d to dstMerchantAccount %d", authorizeTransaction.amount, srcAccount.ID, dstMerchantAccount.ID)
-	err = transfer(tx, srcAccount, dstMerchantAccount, authorizeTransaction.amount)
+	err = transfer(ctx, tx, srcAccount, dstMerchantAccount, authorizeTransaction.amount)
 	if err != nil {
 		logInfo("Capture failed: transfer error: %v", err)
 		rollbackErr := tx.Rollback()
@@ -207,7 +228,7 @@ func (i *Implementation) Capture(ctx context.Context, capturePayload *pb.Capture
 		return nil, err
 	}
 
-	customerWallet, err := fetchWallet(tx, authorizeTransaction.srcEmailAddress)
+	customerWallet, err := fetchWallet(ctx, tx, authorizeTransaction.srcEmailAddress)
 	if err != nil {
 		logInfo("Capture failed: could not fetch customer wallet: %v", err)
 		rollbackErr := tx.Rollback()
@@ -218,7 +239,7 @@ func (i *Implementation) Capture(ctx context.Context, capturePayload *pb.Capture
 		return nil, err
 	}
 
-	merchantWallet, err := fetchWalletWithWalletID(tx, authorizeTransaction.finalDstMerchantWalletID)
+	merchantWallet, err := fetchWalletWithWalletID(ctx, tx, authorizeTransaction.finalDstMerchantWalletID)
 	if err != nil {
 		logInfo("Capture failed: could not fetch merchant wallet: %v", err)
 		rollbackErr := tx.Rollback()
@@ -229,7 +250,7 @@ func (i *Implementation) Capture(ctx context.Context, capturePayload *pb.Capture
 		return nil, err
 	}
 
-	err = createTransaction(tx, authorizeTransaction.pid, srcAccount, dstMerchantAccount, customerWallet, merchantWallet, merchantWallet, authorizeTransaction.amount)
+	err = createTransaction(ctx, tx, authorizeTransaction.pid, srcAccount, dstMerchantAccount, customerWallet, merchantWallet, merchantWallet, authorizeTransaction.amount)
 	if err != nil {
 		logInfo("Capture failed: createTransaction error: %v", err)
 		rollbackErr := tx.Rollback()
@@ -262,6 +283,13 @@ func (i *Implementation) Capture(ctx context.Context, capturePayload *pb.Capture
 }
 
 func (i *Implementation) CreateAccount(ctx context.Context, createAccountPayload *pb.CreateAccountPayload) (*emptypb.Empty, error) {
+	ctx, span := i.tracer.Start(ctx, "CreateAccount")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("email_address", createAccountPayload.GetEmailAddress()),
+		attribute.String("wallet_type", pb.WalletType.String(createAccountPayload.GetWalletType())),
+	)
 	logInfo("CreateAccount called with payload: %+v", createAccountPayload)
 
 	// Begin the transaction
@@ -272,7 +300,7 @@ func (i *Implementation) CreateAccount(ctx context.Context, createAccountPayload
 	}
 
 	// Create wallet
-	walletId, err := createWallet(tx, createAccountPayload.EmailAddress, createAccountPayload.WalletType)
+	walletId, err := createWallet(ctx, tx, createAccountPayload.EmailAddress, createAccountPayload.WalletType)
 	if err != nil {
 		logInfo("Create Account failed: createWallet error: %v", err)
 		rollbackErr := tx.Rollback()
@@ -286,7 +314,7 @@ func (i *Implementation) CreateAccount(ctx context.Context, createAccountPayload
 	//  Determine account type
 	if createAccountPayload.WalletType == pb.WalletType_CUSTOMER {
 		//  Create Customer DEFAULT Account
-		err = createAccount(tx, createAccountPayload.InitialBalanceCents, "DEFAULT", int64(walletId))
+		err = createAccount(ctx, tx, createAccountPayload.InitialBalanceCents, "DEFAULT", int64(walletId))
 		if err != nil {
 			logInfo("Create Account failed: createAccount error: %v", err)
 			rollbackErr := tx.Rollback()
@@ -297,7 +325,7 @@ func (i *Implementation) CreateAccount(ctx context.Context, createAccountPayload
 			return nil, err
 		}
 		//  Create Customer PAYMENT Account
-		err = createAccount(tx, 0, "PAYMENT", int64(walletId))
+		err = createAccount(ctx, tx, 0, "PAYMENT", int64(walletId))
 		if err != nil {
 			logInfo("Create Account failed: createAccount error: %v", err)
 			rollbackErr := tx.Rollback()
@@ -310,7 +338,7 @@ func (i *Implementation) CreateAccount(ctx context.Context, createAccountPayload
 
 	} else {
 		//  Create Merchant INCOMING Account
-		err = createAccount(tx, 0, "INCOMING", int64(walletId))
+		err = createAccount(ctx, tx, 0, "INCOMING", int64(walletId))
 		if err != nil {
 			logInfo("Create Account failed: createAccount error: %v", err)
 			rollbackErr := tx.Rollback()
@@ -339,7 +367,14 @@ func (i *Implementation) CreateAccount(ctx context.Context, createAccountPayload
 }
 
 func (i *Implementation) CheckBalance(ctx context.Context, checkBalancePayload *pb.CheckBalancePayload) (*pb.CheckBalanceResponse, error) {
+	ctx, span := i.tracer.Start(ctx, "CheckBalance")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("email_address", checkBalancePayload.GetEmailAddress()),
+	)
 	logInfo("CheckBalance called with payload: %+v", checkBalancePayload)
+
 	// Begin the transaction
 	tx, err := i.db.Begin()
 	if err != nil {
@@ -347,7 +382,7 @@ func (i *Implementation) CheckBalance(ctx context.Context, checkBalancePayload *
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	// get wallet based on email_address
-	wallet, err := fetchWallet(tx, checkBalancePayload.EmailAddress)
+	wallet, err := fetchWallet(ctx, tx, checkBalancePayload.EmailAddress)
 	if err != nil {
 		logInfo("CheckBalance failed: could not fetch wallet: %v", err)
 		rollbackErr := tx.Rollback()
@@ -368,7 +403,7 @@ func (i *Implementation) CheckBalance(ctx context.Context, checkBalancePayload *
 	}
 
 	// get account data based on wallet_id
-	account, err := fetchAccount(tx, wallet.ID, accountType)
+	account, err := fetchAccount(ctx, tx, wallet.ID, accountType)
 	if err != nil {
 		logInfo("CheckBalance failed: could not fetch account: %v", err)
 		rollbackErr := tx.Rollback()
@@ -398,19 +433,21 @@ func (i *Implementation) CheckBalance(ctx context.Context, checkBalancePayload *
 	}, nil
 }
 
-func fetchWallet(tx *sql.Tx, emailAddress string) (wallet, error) {
+func fetchWallet(ctx context.Context, tx *sql.Tx, emailAddress string) (wallet, error) {
+	ctx, span := trace.SpanFromContext(ctx).TracerProvider().Tracer("db").Start(ctx, "fetchWallet")
+	defer span.End()
 	var w wallet
 
-	stmt, err := tx.Prepare("SELECT id, email_address, wallet_type FROM wallet WHERE email_address = ?")
+	stmt, err := tx.PrepareContext(ctx, "SELECT id, email_address, wallet_type FROM wallet WHERE email_address = ?")
 	if err != nil {
 		return w, status.Error(codes.Internal, err.Error())
 	}
 	defer stmt.Close()
 
-	err = stmt.QueryRow(emailAddress).Scan(&w.ID, &w.emailAddress, &w.walletType)
+	err = stmt.QueryRowContext(ctx, emailAddress).Scan(&w.ID, &w.emailAddress, &w.walletType)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return w, status.Error(codes.InvalidArgument, err.Error())
+			return w, status.Error(codes.InvalidArgument, "wallet not found")
 		}
 		return w, status.Error(codes.Internal, err.Error())
 	}
@@ -418,19 +455,21 @@ func fetchWallet(tx *sql.Tx, emailAddress string) (wallet, error) {
 	return w, nil
 }
 
-func fetchWalletWithWalletID(tx *sql.Tx, walletID int32) (wallet, error) {
+func fetchWalletWithWalletID(ctx context.Context, tx *sql.Tx, walletID int32) (wallet, error) {
+	ctx, span := trace.SpanFromContext(ctx).TracerProvider().Tracer("db").Start(ctx, "fetchWalletWithWalletID")
+	defer span.End()
 	var w wallet
 
-	stmt, err := tx.Prepare("SELECT id, email_address, wallet_type FROM wallet WHERE id = ?")
+	stmt, err := tx.PrepareContext(ctx, "SELECT id, email_address, wallet_type FROM wallet WHERE id = ?")
 	if err != nil {
 		return w, status.Error(codes.Internal, err.Error())
 	}
 	defer stmt.Close()
 
-	err = stmt.QueryRow(walletID).Scan(&w.ID, &w.emailAddress, &w.walletType)
+	err = stmt.QueryRowContext(ctx, walletID).Scan(&w.ID, &w.emailAddress, &w.walletType)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return w, status.Error(codes.InvalidArgument, err.Error())
+			return w, status.Error(codes.InvalidArgument, "wallet not found")
 		}
 		return w, status.Error(codes.Internal, err.Error())
 	}
@@ -438,19 +477,21 @@ func fetchWalletWithWalletID(tx *sql.Tx, walletID int32) (wallet, error) {
 	return w, nil
 }
 
-func fetchAccount(tx *sql.Tx, walletID int32, accountType string) (account, error) {
+func fetchAccount(ctx context.Context, tx *sql.Tx, walletID int32, accountType string) (account, error) {
+	ctx, span := trace.SpanFromContext(ctx).TracerProvider().Tracer("db").Start(ctx, "fetchAccount")
+	defer span.End()
 	var a account
 
-	stmt, err := tx.Prepare("SELECT id, cents, account_type, wallet_id FROM account WHERE wallet_id = ? AND account_type = ?")
+	stmt, err := tx.PrepareContext(ctx, "SELECT id, cents, account_type, wallet_id FROM account WHERE wallet_id = ? AND account_type = ?")
 	if err != nil {
 		return a, status.Error(codes.Internal, err.Error())
 	}
 	defer stmt.Close()
 
-	err = stmt.QueryRow(walletID, accountType).Scan(&a.ID, &a.cents, &a.accountType, &a.walletID)
+	err = stmt.QueryRowContext(ctx, walletID, accountType).Scan(&a.ID, &a.cents, &a.accountType, &a.walletID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return a, status.Error(codes.InvalidArgument, err.Error())
+			return a, status.Error(codes.InvalidArgument, "account not found")
 		}
 		return a, status.Error(codes.Internal, err.Error())
 	}
@@ -458,33 +499,35 @@ func fetchAccount(tx *sql.Tx, walletID int32, accountType string) (account, erro
 	return a, nil
 }
 
-func transfer(tx *sql.Tx, srcAccount account, dstAccount account, amount int64) error {
+func transfer(ctx context.Context, tx *sql.Tx, srcAccount account, dstAccount account, amount int64) error {
+	ctx, span := trace.SpanFromContext(ctx).TracerProvider().Tracer("db").Start(ctx, "transfer")
+	defer span.End()
 	if srcAccount.cents < amount {
 		return status.Error(codes.FailedPrecondition, "insufficient funds")
 	}
 
 	// Deduct from source account
 	newSrcCents := srcAccount.cents - amount
-	stmt, err := tx.Prepare("UPDATE account SET cents = ? WHERE id = ?")
+	stmt, err := tx.PrepareContext(ctx, "UPDATE account SET cents = ? WHERE id = ?")
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(newSrcCents, srcAccount.ID)
+	_, err = stmt.ExecContext(ctx, newSrcCents, srcAccount.ID)
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
 
 	// Add to destination account
 	newDstCents := dstAccount.cents + amount
-	stmt, err = tx.Prepare("UPDATE account SET cents = ? WHERE id = ?")
+	stmt, err = tx.PrepareContext(ctx, "UPDATE account SET cents = ? WHERE id = ?")
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(newDstCents, dstAccount.ID)
+	_, err = stmt.ExecContext(ctx, newDstCents, dstAccount.ID)
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
@@ -492,15 +535,17 @@ func transfer(tx *sql.Tx, srcAccount account, dstAccount account, amount int64) 
 	return nil
 }
 
-func createTransaction(tx *sql.Tx, pid string, srcAccount account, dstAccount account, srcWallet wallet, dstWallet wallet, finalDstWallet wallet, amount int64) error {
+func createTransaction(ctx context.Context, tx *sql.Tx, pid string, srcAccount account, dstAccount account, srcWallet wallet, dstWallet wallet, finalDstWallet wallet, amount int64) error {
+	ctx, span := trace.SpanFromContext(ctx).TracerProvider().Tracer("db").Start(ctx, "createTransaction")
+	defer span.End()
 
-	stmt, err := tx.Prepare(insertTransactionQuery)
+	stmt, err := tx.PrepareContext(ctx, insertTransactionQuery)
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(pid, srcWallet.emailAddress, dstWallet.emailAddress, srcWallet.ID, dstWallet.ID, srcAccount.ID, dstAccount.ID, srcAccount.accountType, dstAccount.accountType, finalDstWallet.ID, amount)
+	_, err = stmt.ExecContext(ctx, pid, srcWallet.emailAddress, dstWallet.emailAddress, srcWallet.ID, dstWallet.ID, srcAccount.ID, dstAccount.ID, srcAccount.accountType, dstAccount.accountType, finalDstWallet.ID, amount)
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
@@ -508,9 +553,11 @@ func createTransaction(tx *sql.Tx, pid string, srcAccount account, dstAccount ac
 	return nil
 }
 
-func createWallet(tx *sql.Tx, emailAddress string, walletType pb.WalletType) (int64, error) {
+func createWallet(ctx context.Context, tx *sql.Tx, emailAddress string, walletType pb.WalletType) (int64, error) {
+	ctx, span := trace.SpanFromContext(ctx).TracerProvider().Tracer("db").Start(ctx, "createWallet")
+	defer span.End()
 
-	stmt, err := tx.Prepare(createWalletQuery)
+	stmt, err := tx.PrepareContext(ctx, createWalletQuery)
 	if err != nil {
 		return -1, status.Error(codes.Internal, err.Error())
 	}
@@ -527,7 +574,7 @@ func createWallet(tx *sql.Tx, emailAddress string, walletType pb.WalletType) (in
 		walletTypeStr = "UNKNOWN"
 	}
 
-	result, err := stmt.Exec(emailAddress, walletTypeStr)
+	result, err := stmt.ExecContext(ctx, emailAddress, walletTypeStr)
 	if err != nil {
 		if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == 1062 {
 			return -1, status.Error(codes.AlreadyExists, "wallet already exists")
@@ -543,15 +590,17 @@ func createWallet(tx *sql.Tx, emailAddress string, walletType pb.WalletType) (in
 	return id, nil
 }
 
-func createAccount(tx *sql.Tx, amount int64, accountType string, walletId int64) error {
+func createAccount(ctx context.Context, tx *sql.Tx, amount int64, accountType string, walletId int64) error {
+	ctx, span := trace.SpanFromContext(ctx).TracerProvider().Tracer("db").Start(ctx, "createAccount")
+	defer span.End()
 
-	stmt, err := tx.Prepare(createAccountQuery)
+	stmt, err := tx.PrepareContext(ctx, createAccountQuery)
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(amount, accountType, walletId)
+	_, err = stmt.ExecContext(ctx, amount, accountType, walletId)
 	if err != nil {
 		if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == 1062 {
 			return status.Error(codes.AlreadyExists, "account already exists")
@@ -562,19 +611,21 @@ func createAccount(tx *sql.Tx, amount int64, accountType string, walletId int64)
 	return nil
 }
 
-func fetchTransaction(tx *sql.Tx, pid string) (transaction, error) {
+func fetchTransaction(ctx context.Context, tx *sql.Tx, pid string) (transaction, error) {
+	ctx, span := trace.SpanFromContext(ctx).TracerProvider().Tracer("db").Start(ctx, "fetchTransaction")
+	defer span.End()
 	var t transaction
 
-	stmt, err := tx.Prepare(selectTransactionQuery)
+	stmt, err := tx.PrepareContext(ctx, selectTransactionQuery)
 	if err != nil {
 		return t, status.Error(codes.Internal, err.Error())
 	}
 	defer stmt.Close()
 
-	err = stmt.QueryRow(pid).Scan(&t.pid, &t.srcEmailAddress, &t.dstEmailAddress, &t.srcAccountWalletID, &t.dstAccountWalletID, &t.srcAccountID, &t.dstAccountID, &t.srcAccountType, &t.dstAccountType, &t.finalDstMerchantWalletID, &t.amount)
+	err = stmt.QueryRowContext(ctx, pid).Scan(&t.pid, &t.srcEmailAddress, &t.dstEmailAddress, &t.srcAccountWalletID, &t.dstAccountWalletID, &t.srcAccountID, &t.dstAccountID, &t.srcAccountType, &t.dstAccountType, &t.finalDstMerchantWalletID, &t.amount)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return t, status.Error(codes.InvalidArgument, err.Error())
+			return t, status.Error(codes.InvalidArgument, "transaction not found")
 		}
 		return t, status.Error(codes.Internal, err.Error())
 	}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
@@ -8,9 +9,13 @@ import (
 	"os"
 
 	"github.com/IBM/sarama"
+	"github.com/XSAM/otelsql"
 	mm "github.com/andreistefanciprian/gomicropay/money_movement/internal/implementation"
+	"github.com/andreistefanciprian/gomicropay/money_movement/internal/tracing"
 	pb "github.com/andreistefanciprian/gomicropay/money_movement/proto"
 	_ "github.com/go-sql-driver/mysql"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/otel/propagation"
 	"google.golang.org/grpc"
 )
 
@@ -22,7 +27,14 @@ var db *sql.DB
 
 func main() {
 
-	var err error
+	// Initialise tracing
+	tp, err := tracing.InitTracer("money-movement")
+	if err != nil {
+		log.Fatalf("failed to initialize tracer: %v", err)
+	}
+	defer tp.Shutdown(context.Background())
+	tracer := tp.Tracer("money-movement-tracer")
+
 	dbUser := os.Getenv("MYSQL_USER")
 	dbPassword := os.Getenv("MYSQL_PASSWORD")
 	dbName := os.Getenv("MYSQL_DB")
@@ -30,11 +42,11 @@ func main() {
 	dbPort := os.Getenv("MYSQL_PORT")
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPassword, dbHost, dbPort, dbName)
 
-	db, err = sql.Open(dbDriver, dsn)
+	// Instrumented DB connection
+	db, err := otelsql.Open("mysql", dsn, otelsql.WithTracerProvider(tp))
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	defer func() {
 		if err = db.Close(); err != nil {
 			log.Printf("Error closing database connection: %v", err)
@@ -68,9 +80,21 @@ func main() {
 		}
 	}()
 
-	// gRPC server setup
-	grpcServer := grpc.NewServer()
-	pb.RegisterMoneyMovementServiceServer(grpcServer, mm.NewMoneyMovementImplementation(db, producer))
+	// Instrumented gRPC server setup
+	grpcServer := grpc.NewServer(
+		grpc.StatsHandler(
+			otelgrpc.NewServerHandler(
+				// optional but nice if you have a custom provider/propagators:
+				otelgrpc.WithTracerProvider(tp),
+				otelgrpc.WithPropagators(propagation.TraceContext{}),
+			// otelgrpc.WithFilter(func(ctx context.Context, info otelgrpc.InterceptorInfo) bool { return true }),
+			),
+		),
+		// you can still chain your own unary interceptors for recovery, auth, etc.
+		// grpc.ChainUnaryInterceptor(recoveryUnaryServerInterceptor()),
+	)
+	pb.RegisterMoneyMovementServiceServer(grpcServer, mm.NewMoneyMovementImplementation(db, producer, tracer))
+
 	// listen and serve
 	moneyMovementPort := os.Getenv("MONEY_MOVEMENT_PORT")
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%s", moneyMovementPort))

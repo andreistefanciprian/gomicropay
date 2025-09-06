@@ -8,11 +8,17 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 
 	authpb "github.com/andreistefanciprian/gomicropay/api_gateway/auth/proto"
+	"github.com/andreistefanciprian/gomicropay/api_gateway/internal/tracing"
 	"github.com/andreistefanciprian/gomicropay/api_gateway/internal/validator"
 	mmpb "github.com/andreistefanciprian/gomicropay/api_gateway/money_movement/proto"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -20,25 +26,41 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-var mmClient mmpb.MoneyMovementServiceClient
-var authClient authpb.AuthServiceClient
+type Application struct {
+	mmClient   mmpb.MoneyMovementServiceClient
+	authClient authpb.AuthServiceClient
+	logLevel   string
+	tracer     trace.Tracer
+}
 
-var logLevel string
+func NewApplication() *Application {
+	return &Application{}
+}
 
-func logDebug(format string, v ...interface{}) {
-	if logLevel == "DEBUG" {
+func (a *Application) logDebug(format string, v ...interface{}) {
+	if a.logLevel == "DEBUG" {
 		log.Printf("[DEBUG] "+format, v...)
 	}
 }
 
-func logInfo(format string, v ...interface{}) {
-	if logLevel == "INFO" || logLevel == "DEBUG" {
+func (a *Application) logInfo(format string, v ...interface{}) {
+	if a.logLevel == "INFO" || a.logLevel == "DEBUG" {
 		log.Printf("[INFO] "+format, v...)
 	}
 }
 
 func main() {
 
+	app := NewApplication()
+	// Initialize tracer
+	tp, err := tracing.InitTracer("api-gateway")
+	if err != nil {
+		log.Fatalf("failed to initialize tracer: %v", err)
+	}
+	defer tp.Shutdown(context.Background())
+	app.tracer = tp.Tracer("api-gateway")
+
+	// Service addresses
 	authHost := os.Getenv("AUTH_HOST")
 	authPort := os.Getenv("AUTH_PORT")
 	moneyMovementHost := os.Getenv("MONEY_MOVEMENT_HOST")
@@ -46,14 +68,26 @@ func main() {
 	moneyMovementAddress := fmt.Sprintf("%s:%s", moneyMovementHost, moneyMovementPort)
 	authAddress := fmt.Sprintf("%s:%s", authHost, authPort)
 
-	logLevel = os.Getenv("LOG_LEVEL")
+	logLevel := os.Getenv("LOG_LEVEL")
 	if logLevel == "" {
 		logLevel = "INFO"
 	}
-	logInfo("Starting API Gateway with log level: %s", logLevel)
+	app.logLevel = logLevel
+	app.logInfo("Starting API Gateway with log level: %s", logLevel)
 
 	// auth connection
-	authConn, err := grpc.NewClient(authAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	authConn, err := grpc.NewClient(
+		authAddress,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithStatsHandler(
+			otelgrpc.NewClientHandler(
+				// Optional knobs:
+				otelgrpc.WithTracerProvider(tp),
+				otelgrpc.WithPropagators(propagation.TraceContext{}),
+			// otelgrpc.WithMessageEvents(otelgrpc.ReceivedEvents, otelgrpc.SentEvents),
+			),
+		),
+	)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -63,11 +97,22 @@ func main() {
 		}
 	}()
 
-	authClient = authpb.NewAuthServiceClient(authConn)
+	app.authClient = authpb.NewAuthServiceClient(authConn)
 
 	// money movement connection
 	log.Printf("Connecting to Money Movement service at %s", moneyMovementAddress)
-	mmConn, err := grpc.NewClient(moneyMovementAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	mmConn, err := grpc.NewClient(
+		moneyMovementAddress,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithStatsHandler(
+			otelgrpc.NewClientHandler(
+				// Optional knobs:
+				otelgrpc.WithTracerProvider(tp),
+				otelgrpc.WithPropagators(propagation.TraceContext{}),
+			// otelgrpc.WithMessageEvents(otelgrpc.ReceivedEvents, otelgrpc.SentEvents),
+			),
+		),
+	)
 	if err != nil {
 		log.Fatalf("Failed to connect to Money Movement service at %s: %v", moneyMovementAddress, err)
 	}
@@ -79,14 +124,14 @@ func main() {
 		}
 	}()
 	log.Println("Money Movement gRPC connection established.")
-	mmClient = mmpb.NewMoneyMovementServiceClient(mmConn)
+	app.mmClient = mmpb.NewMoneyMovementServiceClient(mmConn)
 
-	http.HandleFunc("/register", register)
-	http.HandleFunc("/login", login)
-	http.HandleFunc("/create-account", createAccount)
-	http.HandleFunc("/customer/payment/authorize", customerPaymentAuthorize)
-	http.HandleFunc("/customer/payment/capture", customerPaymentCapture)
-	http.HandleFunc("/checkbalance", checkBalance)
+	http.HandleFunc("/register", app.register)
+	http.HandleFunc("/login", app.login)
+	http.HandleFunc("/create-account", app.createAccount)
+	http.HandleFunc("/customer/payment/authorize", app.customerPaymentAuthorize)
+	http.HandleFunc("/customer/payment/capture", app.customerPaymentCapture)
+	http.HandleFunc("/checkbalance", app.checkBalance)
 
 	log.Println("API Gateway listening on port 8080")
 	err = http.ListenAndServe(":8080", nil)
@@ -95,9 +140,13 @@ func main() {
 	}
 }
 
-func register(w http.ResponseWriter, r *http.Request) {
-	logInfo("register handler called")
-	ctx := context.Background()
+func (a *Application) register(w http.ResponseWriter, r *http.Request) {
+	// Start a new span for the register operation
+	ctx := r.Context()
+	ctx, span := a.tracer.Start(ctx, "register")
+	defer span.End()
+
+	a.logInfo("register handler called")
 
 	var req struct {
 		FirstName string `json:"first_name"`
@@ -105,16 +154,20 @@ func register(w http.ResponseWriter, r *http.Request) {
 		Email     string `json:"email"`
 		Password  string `json:"password"`
 	}
+	span.SetAttributes(
+		attribute.String("email", req.Email),
+	)
+
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		logInfo("Failed to decode JSON body: %v", err)
+		a.logInfo("Failed to decode JSON body: %v", err)
 		http.Error(w, "Failed to decode JSON body", http.StatusBadRequest)
 		return
 	}
 
 	// Verify Blank fields
 	if req.FirstName == "" || req.LastName == "" || req.Email == "" || req.Password == "" {
-		logInfo("One or more required fields are blank")
+		a.logInfo("One or more required fields are blank")
 		http.Error(w, "All fields are required", http.StatusBadRequest)
 		return
 	}
@@ -122,7 +175,7 @@ func register(w http.ResponseWriter, r *http.Request) {
 	// Verify password length
 	ok := validator.MinChars(req.Password, 8)
 	if !ok {
-		logInfo("Password does not meet minimum length requirement")
+		a.logInfo("Password does not meet minimum length requirement")
 		http.Error(w, "Password must be at least 8 characters long", http.StatusBadRequest)
 		return
 	}
@@ -130,20 +183,20 @@ func register(w http.ResponseWriter, r *http.Request) {
 	// Create a bcrypt hash of the plain-text password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), 12)
 	if err != nil {
-		logInfo("Failed to hash password: %v", err)
+		a.logInfo("Failed to hash password: %v", err)
 		http.Error(w, "Failed to hash password", http.StatusInternalServerError)
 		return
 	}
 
 	//  Check if user exists
-	userExistsResp, err := authClient.CheckUserExists(ctx, &authpb.UserEmailAddress{UserEmail: req.Email})
+	userExistsResp, err := a.authClient.CheckUserExists(ctx, &authpb.UserEmailAddress{UserEmail: req.Email})
 	if err != nil {
-		logInfo("Failed to check if user exists: %v", err)
+		a.logInfo("Failed to check if user exists: %v", err)
 		http.Error(w, "Failed to check if user exists", http.StatusInternalServerError)
 		return
 	}
 	if userExistsResp.IsUser {
-		logInfo("User already exists: %s", req.Email)
+		a.logInfo("User already exists: %s", req.Email)
 		http.Error(w, "User already exists", http.StatusConflict)
 		return
 	}
@@ -151,7 +204,7 @@ func register(w http.ResponseWriter, r *http.Request) {
 	//  Verify email format
 	ok = validator.Matches(req.Email, validator.EmailRX)
 	if !ok {
-		logInfo("Invalid email format: %s", req.Email)
+		a.logInfo("Invalid email format: %s", req.Email)
 		http.Error(w, "Invalid email format", http.StatusBadRequest)
 		return
 	}
@@ -164,32 +217,38 @@ func register(w http.ResponseWriter, r *http.Request) {
 		PasswordHash: string(hashedPassword),
 	}
 
-	logDebug("User registration data: %+v", userRegistrationData)
+	a.logDebug("User registration data: %+v", userRegistrationData)
 
-	response, err := authClient.RegisterUser(ctx, userRegistrationData)
+	response, err := a.authClient.RegisterUser(ctx, userRegistrationData)
 	if err != nil {
+		span.AddEvent("User registration failed", trace.WithAttributes())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	span.AddEvent("User registered successfully", trace.WithAttributes())
 	responseJSON, err := json.Marshal(response)
 	if err != nil {
-		logInfo("Failed to marshal response: %v", err)
+		a.logInfo("Failed to marshal response: %v", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	logInfo("User registered successfully: %v", response)
+	a.logInfo("User registered successfully: %v", response)
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(responseJSON)
 	if err != nil {
-		logInfo("Failed to write response: %v", err)
+		a.logInfo("Failed to write response: %v", err)
 	}
 }
 
-func login(w http.ResponseWriter, r *http.Request) {
-	logInfo("userLogin handler called")
-	ctx := context.Background()
+func (a *Application) login(w http.ResponseWriter, r *http.Request) {
+	// Start a new span for the login operation
+	ctx := r.Context()
+	ctx, span := a.tracer.Start(ctx, "login")
+	defer span.End()
+
+	a.logInfo("login handler called")
 
 	var req struct {
 		Email    string `json:"email"`
@@ -197,72 +256,80 @@ func login(w http.ResponseWriter, r *http.Request) {
 	}
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		logInfo("Failed to decode JSON body: %v", err)
+		a.logInfo("Failed to decode JSON body: %v", err)
 		http.Error(w, "Failed to decode JSON body", http.StatusBadRequest)
 		return
 	}
 
+	span.SetAttributes(
+		attribute.String("email", req.Email),
+	)
+
 	// Verify Blank fields
 	if req.Email == "" || req.Password == "" {
-		logInfo("One or more required fields are blank")
+		a.logInfo("One or more required fields are blank")
 		http.Error(w, "All fields are required", http.StatusBadRequest)
 		return
 	}
 
 	//  Check if user exists
-	userExistsResp, err := authClient.CheckUserExists(ctx, &authpb.UserEmailAddress{UserEmail: req.Email})
+	userExistsResp, err := a.authClient.CheckUserExists(ctx, &authpb.UserEmailAddress{UserEmail: req.Email})
 	if err != nil {
-		logInfo("Failed to check if user exists: %v", err)
+		a.logInfo("Failed to check if user exists: %v", err)
 		http.Error(w, "Failed to check if user exists", http.StatusInternalServerError)
 		return
 	}
 	if !userExistsResp.IsUser {
-		logInfo("User is not registered: %s", req.Email)
+		a.logInfo("User is not registered: %s", req.Email)
 		http.Error(w, "User is not registered", http.StatusConflict)
 		return
 	}
 
 	// Get password hash from auth service
-	hashedPassword, err := authClient.RetrieveHashedPassword(ctx, &authpb.UserEmailAddress{UserEmail: req.Email})
+	hashedPassword, err := a.authClient.RetrieveHashedPassword(ctx, &authpb.UserEmailAddress{UserEmail: req.Email})
 	if err != nil {
-		logInfo("Failed to retrieve hashed password: %v", err)
+		a.logInfo("Failed to retrieve hashed password: %v", err)
 		http.Error(w, "Failed to retrieve hashed password", http.StatusInternalServerError)
 		return
 	}
 
 	// Check password is valid
 	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword.HashedPassword), []byte(req.Password)); err != nil {
-		logInfo("Invalid password for user %s: %v", req.Email, err)
+		a.logInfo("Invalid password for user %s: %v", req.Email, err)
 		http.Error(w, "Invalid password", http.StatusUnauthorized)
 		return
 	}
 
 	// Generate JWT token
-	token, err := authClient.GenerateToken(ctx, &authpb.UserEmailAddress{UserEmail: req.Email})
+	token, err := a.authClient.GenerateToken(ctx, &authpb.UserEmailAddress{UserEmail: req.Email})
 	if err != nil {
-		logInfo("GenerateToken failed: %v", err)
+		a.logInfo("GenerateToken failed: %v", err)
 		_, writeErr := w.Write([]byte(err.Error()))
 		if writeErr != nil {
 			log.Println(writeErr)
 		}
 		return
 	}
-	logDebug("Token generated for user %s: %s", req.Email, token.Jwt)
-	logInfo("User logged in successfully: %s", req.Email)
+	a.logDebug("Token generated for user %s: %s", req.Email, token.Jwt)
+	a.logInfo("User logged in successfully: %s", req.Email)
 	_, err = w.Write([]byte(token.Jwt))
 	if err != nil {
 		log.Println("Failed to write token:", err)
 	}
 }
 
-func checkBalance(w http.ResponseWriter, r *http.Request) {
-	logInfo("checkBalance called")
-	ctx := context.Background()
+func (a *Application) checkBalance(w http.ResponseWriter, r *http.Request) {
+	// Start a new span for the checkBalance operation
+	ctx := r.Context()
+	ctx, span := a.tracer.Start(ctx, "checkBalance")
+	defer span.End()
+
+	a.logInfo("checkBalance called")
 
 	// Check user has valid JWT Token in Authorisation Header
-	err := checkAuthHeader(ctx, r)
+	err := a.checkAuthHeader(ctx, r)
 	if err != nil {
-		logInfo("Authorization failed: %v", err)
+		a.logInfo("Authorization failed: %v", err)
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
@@ -280,20 +347,24 @@ func checkBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logDebug("Request body: %s", string(body))
+	a.logDebug("Request body: %s", string(body))
 	err = json.Unmarshal(body, &payload)
 	if err != nil {
-		logInfo("Failed to unmarshal payload: %v", err)
+		a.logInfo("Failed to unmarshal payload: %v", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	logDebug("checkBalance payload: %+v", payload)
-	authorizedResponse, err := mmClient.CheckBalance(ctx, &mmpb.CheckBalancePayload{
+	span.SetAttributes(
+		attribute.String("email", payload.EmailAddress),
+	)
+
+	a.logDebug("checkBalance payload: %+v", payload)
+	authorizedResponse, err := a.mmClient.CheckBalance(ctx, &mmpb.CheckBalancePayload{
 		EmailAddress: payload.EmailAddress,
 	})
 	if err != nil {
-		logInfo("Check balance failed: %v", err)
+		a.logInfo("Check balance failed: %v", err)
 		_, writeErr := w.Write([]byte(err.Error()))
 		if writeErr != nil {
 			log.Println(writeErr)
@@ -301,7 +372,7 @@ func checkBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logDebug("checkBalance response: %+v", authorizedResponse)
+	a.logDebug("checkBalance response: %+v", authorizedResponse)
 	type response struct {
 		Cents int64 `json:"cents"`
 	}
@@ -311,27 +382,31 @@ func checkBalance(w http.ResponseWriter, r *http.Request) {
 	}
 	responseJSON, err := json.Marshal(resp)
 	if err != nil {
-		logInfo("Failed to marshal response: %v", err)
+		a.logInfo("Failed to marshal response: %v", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	logInfo("Check balance succeeded")
+	a.logInfo("Check balance succeeded")
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(responseJSON)
 	if err != nil {
-		logInfo("Failed to write response: %v", err)
+		a.logInfo("Failed to write response: %v", err)
 	}
 }
 
-func customerPaymentAuthorize(w http.ResponseWriter, r *http.Request) {
-	logInfo("customerPaymentAuthorize called")
-	ctx := context.Background()
+func (a *Application) customerPaymentAuthorize(w http.ResponseWriter, r *http.Request) {
+	// Start a new span for the customerPaymentAuthorize operation
+	ctx := r.Context()
+	ctx, span := a.tracer.Start(ctx, "customerPaymentAuthorize")
+	defer span.End()
+
+	a.logInfo("customerPaymentAuthorize called")
 
 	// Check user has valid JWT Token in Authorisation Header
-	err := checkAuthHeader(ctx, r)
+	err := a.checkAuthHeader(ctx, r)
 	if err != nil {
-		logInfo("Authorization failed: %v", err)
+		a.logInfo("Authorization failed: %v", err)
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
@@ -352,23 +427,30 @@ func customerPaymentAuthorize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logDebug("Request body: %s", string(body))
+	a.logDebug("Request body: %s", string(body))
 	err = json.Unmarshal(body, &payload)
 	if err != nil {
-		logInfo("Failed to unmarshal payload: %v", err)
+		a.logInfo("Failed to unmarshal payload: %v", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	logDebug("Authorize payload: %+v", payload)
-	authorizedResponse, err := mmClient.Authorize(ctx, &mmpb.AuthorizePayload{
+	span.SetAttributes(
+		attribute.String("customer_email", payload.CustomerEmailAddress),
+		attribute.String("merchant_email", payload.MerchantEmailAddress),
+		attribute.String("cents", strconv.Itoa(int(payload.Cents))),
+		attribute.String("currency", payload.Currency),
+	)
+
+	a.logDebug("Authorize payload: %+v", payload)
+	authorizedResponse, err := a.mmClient.Authorize(ctx, &mmpb.AuthorizePayload{
 		CustomerEmailAddress: payload.CustomerEmailAddress,
 		MerchantEmailAddress: payload.MerchantEmailAddress,
 		Cents:                payload.Cents,
 		Currency:             payload.Currency,
 	})
 	if err != nil {
-		logInfo("Money movement authorization failed: %v", err)
+		a.logInfo("Money movement authorization failed: %v", err)
 		_, writeErr := w.Write([]byte(err.Error()))
 		if writeErr != nil {
 			log.Println(writeErr)
@@ -385,27 +467,31 @@ func customerPaymentAuthorize(w http.ResponseWriter, r *http.Request) {
 	}
 	responseJSON, err := json.Marshal(resp)
 	if err != nil {
-		logInfo("Failed to marshal response: %v", err)
+		a.logInfo("Failed to marshal response: %v", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	logInfo("Authorization succeeded")
+	a.logInfo("Authorization succeeded")
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(responseJSON)
 	if err != nil {
-		logInfo("Failed to write response: %v", err)
+		a.logInfo("Failed to write response: %v", err)
 	}
 }
 
-func customerPaymentCapture(w http.ResponseWriter, r *http.Request) {
-	logInfo("customerPaymentCapture handler called")
-	ctx := context.Background()
+func (a *Application) customerPaymentCapture(w http.ResponseWriter, r *http.Request) {
+	// Start a new span for the customerPaymentCapture operation
+	ctx := r.Context()
+	ctx, span := a.tracer.Start(ctx, "customerPaymentCapture")
+	defer span.End()
+
+	a.logInfo("customerPaymentCapture handler called")
 
 	// Check user has valid JWT Token in Authorisation Header
-	err := checkAuthHeader(ctx, r)
+	err := a.checkAuthHeader(ctx, r)
 	if err != nil {
-		logInfo("Authorization failed: %v", err)
+		a.logInfo("Authorization failed: %v", err)
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
@@ -418,41 +504,50 @@ func customerPaymentCapture(w http.ResponseWriter, r *http.Request) {
 	var payload capturePayload
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		logInfo("Failed to read request body: %v", err)
+		a.logInfo("Failed to read request body: %v", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	logDebug("Request body: %s", string(body))
+	a.logDebug("Request body: %s", string(body))
 	err = json.Unmarshal(body, &payload)
 	if err != nil {
-		logInfo("Failed to unmarshal payload: %v", err)
+		a.logInfo("Failed to unmarshal payload: %v", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	logDebug("Capture payload: %+v", payload)
-	_, err = mmClient.Capture(ctx, &mmpb.CapturePayload{Pid: payload.Pid})
+	span.SetAttributes(
+		attribute.String("pid", payload.Pid),
+	)
+
+	// Capture payment
+	a.logDebug("Capture payload: %+v", payload)
+	_, err = a.mmClient.Capture(ctx, &mmpb.CapturePayload{Pid: payload.Pid})
 	if err != nil {
-		logInfo("Money movement capture failed: %v", err)
+		a.logInfo("Money movement capture failed: %v", err)
 		_, writeErr := w.Write([]byte(err.Error()))
 		if writeErr != nil {
 			log.Println(writeErr)
 		}
 		return
 	}
-	logInfo("Capture succeeded")
+	a.logInfo("Capture succeeded")
 	w.WriteHeader(http.StatusOK)
 }
 
-func createAccount(w http.ResponseWriter, r *http.Request) {
-	logInfo("createAccount handler called")
-	ctx := context.Background()
+func (a *Application) createAccount(w http.ResponseWriter, r *http.Request) {
+	// Start a new span for the createAccount operation
+	ctx := r.Context()
+	ctx, span := a.tracer.Start(ctx, "createAccount")
+	defer span.End()
+
+	a.logInfo("createAccount handler called")
 
 	// Check user has valid JWT Token in Authorisation Header
-	err := checkAuthHeader(ctx, r)
+	err := a.checkAuthHeader(ctx, r)
 	if err != nil {
-		logInfo("Authorization failed: %v", err)
+		a.logInfo("Authorization failed: %v", err)
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
@@ -472,10 +567,10 @@ func createAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logDebug("Request body: %s", string(body))
+	a.logDebug("Request body: %s", string(body))
 	err = json.Unmarshal(body, &payload)
 	if err != nil {
-		logInfo("Failed to unmarshal payload: %v", err)
+		a.logInfo("Failed to unmarshal payload: %v", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
@@ -488,52 +583,85 @@ func createAccount(w http.ResponseWriter, r *http.Request) {
 	case "MERCHANT":
 		walletTypeEnum = mmpb.WalletType_MERCHANT
 	default:
-		logInfo("Invalid WalletType: %v", payload.WalletType)
+		a.logInfo("Invalid WalletType: %v", payload.WalletType)
 		http.Error(w, "wallet_type must be CUSTOMER or MERCHANT", http.StatusBadRequest)
 		return
 	}
 
+	span.SetAttributes(
+		attribute.String("email", payload.EmailAddress),
+		attribute.String("wallet_type", payload.WalletType),
+		attribute.String("initial_balance_cents", strconv.Itoa(int(payload.InitialBalanceCents))),
+		attribute.String("initial_balance_currency", payload.InitialBalanceCurrency),
+	)
+
 	// Validate JWT token user is the same as payload.EmailAddress
 
 	// Create account
-	logDebug("Create Account payload: %+v", payload)
-	_, err = mmClient.CreateAccount(ctx, &mmpb.CreateAccountPayload{
+	a.logDebug("Create Account payload: %+v", payload)
+	_, err = a.mmClient.CreateAccount(ctx, &mmpb.CreateAccountPayload{
 		EmailAddress:           payload.EmailAddress,
 		WalletType:             walletTypeEnum,
 		InitialBalanceCents:    payload.InitialBalanceCents,
 		InitialBalanceCurrency: payload.InitialBalanceCurrency,
 	})
 	if err != nil {
-		logInfo("Create Account failed: %v", err)
+		a.logInfo("Create Account failed: %v", err)
 		_, writeErr := w.Write([]byte(err.Error()))
 		if writeErr != nil {
 			log.Println(writeErr)
 		}
 		return
 	}
-	logInfo("Create Account succeeded")
+	a.logInfo("Create Account succeeded")
 	w.WriteHeader(http.StatusOK)
 }
 
-func checkAuthHeader(context context.Context, r *http.Request) error {
+func (a *Application) checkAuthHeader(context context.Context, r *http.Request) error {
 	authHeader := r.Header.Get("Authorization")
-	logDebug("Authorization header: %s", authHeader)
+	a.logDebug("Authorization header: %s", authHeader)
 	if authHeader == "" {
-		logInfo("Missing Authorization header")
+		a.logInfo("Missing Authorization header")
 		return status.Error(codes.Unauthenticated, "missing Authorization header")
 	}
-
 	if !strings.HasPrefix(authHeader, "Bearer ") {
-		logInfo("Authorization header does not start with 'Bearer '")
+		a.logInfo("Authorization header does not start with 'Bearer '")
 		return status.Error(codes.Unauthenticated, "invalid Authorization header")
 	}
-
 	token := strings.TrimPrefix(authHeader, "Bearer ")
-	logDebug("Extracted token: %s", token)
-	_, err := authClient.VerifyToken(context, &authpb.Token{Jwt: token})
+	a.logDebug("Extracted token: %s", token)
+
+	if token == "" {
+		a.logInfo("Token is empty after trimming 'Bearer ' prefix")
+		return status.Error(codes.Unauthenticated, "empty token")
+	}
+
+	// Validate the token
+	_, err := a.validateToken(context, token)
 	if err != nil {
-		logInfo("Token verification failed: %v", err)
+		a.logInfo("Token validation failed: %v", err)
 		return status.Error(codes.Unauthenticated, "invalid token")
 	}
+
 	return nil
+}
+
+func (a *Application) validateToken(context context.Context, token string) (*authpb.UserEmailAddress, error) {
+	// Start a new span for the validateToken operation
+	ctx, span := a.tracer.Start(context, "validateToken")
+	defer span.End()
+
+	email, err := a.authClient.VerifyToken(ctx, &authpb.Token{Jwt: token})
+	if err != nil {
+		a.logInfo("Token validation failed: %v", err)
+		return email, status.Error(codes.Unauthenticated, "invalid token")
+	}
+
+	span.SetAttributes(
+		attribute.String("email", email.UserEmail),
+	)
+
+	a.logDebug("Token is valid for user: %s", email.UserEmail)
+
+	return email, nil
 }

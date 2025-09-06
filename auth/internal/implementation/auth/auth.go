@@ -10,6 +10,8 @@ import (
 
 	pb "github.com/andreistefanciprian/gomicropay/auth/proto"
 	jwt "github.com/golang-jwt/jwt/v5"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -45,15 +47,24 @@ const (
 type Implementation struct {
 	db *sql.DB
 	pb.UnimplementedAuthServiceServer
+	tracer trace.Tracer
 }
 
-func NewAuthImplementation(db *sql.DB) *Implementation {
+func NewAuthImplementation(db *sql.DB, tracer trace.Tracer) *Implementation {
 	return &Implementation{
-		db: db,
+		db:     db,
+		tracer: tracer,
 	}
 }
 
 func (i *Implementation) RetrieveHashedPassword(ctx context.Context, userEmail *pb.UserEmailAddress) (*pb.HashedPassword, error) {
+	ctx, span := i.tracer.Start(ctx, "RetrieveHashedPassword")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("user_email", userEmail.GetUserEmail()),
+	)
+
 	logDebug("RetrieveHashedPassword called for email: %s", userEmail.GetUserEmail())
 	type user struct {
 		passwordHash string
@@ -61,7 +72,7 @@ func (i *Implementation) RetrieveHashedPassword(ctx context.Context, userEmail *
 
 	var u user
 
-	stmt, err := i.db.Prepare(selectPasswordHashQuery)
+	stmt, err := i.db.PrepareContext(ctx, selectPasswordHashQuery)
 	if err != nil {
 		logInfo("RetrieveHashedPassword failed: prepare error: %v", err)
 		log.Println(err)
@@ -69,7 +80,7 @@ func (i *Implementation) RetrieveHashedPassword(ctx context.Context, userEmail *
 	}
 	defer stmt.Close()
 
-	err = stmt.QueryRow(userEmail.GetUserEmail()).Scan(&u.passwordHash)
+	err = stmt.QueryRowContext(ctx, userEmail.GetUserEmail()).Scan(&u.passwordHash)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			logInfo("RetrieveHashedPassword failed: no rows for email: %s", userEmail.GetUserEmail())
@@ -83,16 +94,23 @@ func (i *Implementation) RetrieveHashedPassword(ctx context.Context, userEmail *
 }
 
 func (i *Implementation) CheckUserExists(ctx context.Context, in *pb.UserEmailAddress) (*pb.UserExistsResponse, error) {
+	ctx, span := i.tracer.Start(ctx, "CheckUserExists")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("user_email", in.GetUserEmail()),
+	)
+
 	logDebug("CheckUserExists called for email: %s", in.GetUserEmail())
 	var count int
-	stmt, err := i.db.Prepare(checkUserExistsQuery)
+	stmt, err := i.db.PrepareContext(ctx, checkUserExistsQuery)
 	if err != nil {
 		logInfo("CheckUserExists failed: prepare error: %v", err)
 		log.Println(err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	defer stmt.Close()
-	err = stmt.QueryRow(in.GetUserEmail()).Scan(&count)
+	err = stmt.QueryRowContext(ctx, in.GetUserEmail()).Scan(&count)
 	if err != nil {
 		logInfo("CheckUserExists failed: query error: %v", err)
 		log.Println(err)
@@ -108,24 +126,42 @@ func (i *Implementation) CheckUserExists(ctx context.Context, in *pb.UserEmailAd
 }
 
 func (i *Implementation) RegisterUser(ctx context.Context, in *pb.UserRegistrationForm) (*pb.UserRegistrationResponse, error) {
+	ctx, span := i.tracer.Start(ctx, "RegisterUser")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("user_email", in.GetUserEmail()),
+	)
+
 	logDebug("User details: FirstName=%s, LastName=%s, Email=%s", in.GetFirstName(), in.GetLastName(), in.GetUserEmail())
-	stmt, err := i.db.Prepare(insertUserQuery)
+	stmt, err := i.db.PrepareContext(ctx, insertUserQuery)
 	if err != nil {
+		span.AddEvent("RegisterUser failed: prepare error", trace.WithAttributes())
 		logInfo("RegisterUser failed: prepare error: %v", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(in.GetFirstName(), in.GetLastName(), in.GetUserEmail(), in.GetPasswordHash())
+	_, err = stmt.ExecContext(ctx, in.GetFirstName(), in.GetLastName(), in.GetUserEmail(), in.GetPasswordHash())
 	if err != nil {
+		span.AddEvent("RegisterUser failed: exec error", trace.WithAttributes())
 		logInfo("RegisterUser failed: exec error: %v", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	span.AddEvent("RegisterUser succeeded", trace.WithAttributes())
 	logInfo("RegisterUser succeeded for email: %s", in.GetUserEmail())
 	return &pb.UserRegistrationResponse{IsRegistered: true}, nil
 }
 
 func (i *Implementation) GenerateToken(ctx context.Context, email *pb.UserEmailAddress) (*pb.Token, error) {
+	// Start a new span for the GenerateToken operation
+	_, span := i.tracer.Start(ctx, "GenerateToken")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("user_email", email.GetUserEmail()),
+	)
+
 	logDebug("GenerateToken called for email: %s", email.GetUserEmail())
 	jwToken, err := createJWT(email.GetUserEmail())
 	if err != nil {
@@ -137,6 +173,10 @@ func (i *Implementation) GenerateToken(ctx context.Context, email *pb.UserEmailA
 }
 
 func (i *Implementation) VerifyToken(ctx context.Context, token *pb.Token) (*pb.UserEmailAddress, error) {
+	// Start a new span for the VerifyToken operation
+	_, span := i.tracer.Start(ctx, "VerifyToken")
+	defer span.End()
+
 	logDebug("VerifyToken called for token: %s", token.Jwt)
 	key := []byte(os.Getenv("SIGNING_KEY"))
 	emailAddress, err := validateJWT(token.Jwt, key)
