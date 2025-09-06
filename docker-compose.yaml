@@ -66,6 +66,7 @@ services:
       MYSQL_HOST: "mysql-money-movement"
       MYSQL_PORT: "3306"
       MONEY_MOVEMENT_PORT: "7070"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "jaeger:4318"
     depends_on:
       mysql-money-movement:
         condition: service_healthy
