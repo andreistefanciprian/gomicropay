@@ -4,6 +4,25 @@ This repository is a hands-on way to learn about microservice architecture using
 
 ![Architecture Overview](microservices_architecture.jpg)
 
+
+## Distributed Tracing with OpenTelemetry
+
+This project uses **OpenTelemetry** for distributed tracing across the `api-gateway`, `auth`, and `money-movement` microservices. All major service and database operations are instrumented, allowing you to follow requests end-to-end through the system.
+
+- Tracing is enabled in:
+  - **API Gateway** (HTTP/gRPC client)
+  - **Auth Service** (gRPC server, DB queries)
+  - **Money Movement Service** (gRPC server, DB queries)
+- Context propagation ensures unified traces across all services.
+- Database queries are traced using otelsql for MySQL.
+
+To view traces, open Jaeger in your browser:
+
+**Jaeger UI:** [http://localhost:16686](http://localhost:16686)
+
+![Jaeger UI](opentelemetry.png)
+
+
 ## API Gateway Endpoints
 
 All endpoints require requests to include the JWT token in the `Authorization` header after login.
@@ -116,3 +135,6 @@ bash test_transaction.sh
 # Remove all services
 make undeploy-all
 ```
+
+
+
