@@ -410,7 +410,7 @@ func fetchWallet(tx *sql.Tx, emailAddress string) (wallet, error) {
 	err = stmt.QueryRow(emailAddress).Scan(&w.ID, &w.emailAddress, &w.walletType)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return w, status.Error(codes.InvalidArgument, err.Error())
+			return w, status.Error(codes.InvalidArgument, "wallet not found")
 		}
 		return w, status.Error(codes.Internal, err.Error())
 	}
@@ -430,7 +430,7 @@ func fetchWalletWithWalletID(tx *sql.Tx, walletID int32) (wallet, error) {
 	err = stmt.QueryRow(walletID).Scan(&w.ID, &w.emailAddress, &w.walletType)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return w, status.Error(codes.InvalidArgument, err.Error())
+			return w, status.Error(codes.InvalidArgument, "wallet not found")
 		}
 		return w, status.Error(codes.Internal, err.Error())
 	}
@@ -450,7 +450,7 @@ func fetchAccount(tx *sql.Tx, walletID int32, accountType string) (account, erro
 	err = stmt.QueryRow(walletID, accountType).Scan(&a.ID, &a.cents, &a.accountType, &a.walletID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return a, status.Error(codes.InvalidArgument, err.Error())
+			return a, status.Error(codes.InvalidArgument, "account not found")
 		}
 		return a, status.Error(codes.Internal, err.Error())
 	}
@@ -574,7 +574,7 @@ func fetchTransaction(tx *sql.Tx, pid string) (transaction, error) {
 	err = stmt.QueryRow(pid).Scan(&t.pid, &t.srcEmailAddress, &t.dstEmailAddress, &t.srcAccountWalletID, &t.dstAccountWalletID, &t.srcAccountID, &t.dstAccountID, &t.srcAccountType, &t.dstAccountType, &t.finalDstMerchantWalletID, &t.amount)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return t, status.Error(codes.InvalidArgument, err.Error())
+			return t, status.Error(codes.InvalidArgument, "transaction not found")
 		}
 		return t, status.Error(codes.Internal, err.Error())
 	}
