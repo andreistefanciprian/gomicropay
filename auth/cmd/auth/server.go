@@ -21,7 +21,6 @@ import (
 var db *sql.DB
 
 func main() {
-	var err error
 	// Initialise tracing
 	tp, err := tracing.InitTracer("auth")
 	if err != nil {
@@ -58,7 +57,7 @@ func main() {
 		log.Println("Database connection established")
 	}
 
-	// gRPC server setup (new API uses StatsHandler)
+	// Instrumented gRPC server setup
 	grpcServer := grpc.NewServer(
 		grpc.StatsHandler(
 			otelgrpc.NewServerHandler(
