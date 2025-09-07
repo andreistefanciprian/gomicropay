@@ -1,16 +1,25 @@
 package ledger
 
-import "database/sql"
+import (
+	"context"
+	"database/sql"
 
-func Insert(db *sql.DB, orderID, customerEmailAddress string, amount int64, operation, transactionDate string) error {
+	"go.opentelemetry.io/otel/trace"
+)
+
+func Insert(ctx context.Context, tracer trace.Tracer, db *sql.DB, orderID, customerEmailAddress string, amount int64, operation, transactionDate string) error {
+
+	ctx, span := tracer.Start(ctx, "InsertLedgerEntry")
+	defer span.End()
+
 	query := "INSERT INTO ledger (order_id, customer_email_address, amount, operation, transaction_date) VALUES (?, ?, ?, ?, ?)"
 
-	stmt, err := db.Prepare(query)
+	stmt, err := db.PrepareContext(ctx, query)
 	if err != nil {
 		return err
 	}
 
-	_, err = stmt.Exec(orderID, customerEmailAddress, amount, operation, transactionDate)
+	_, err = stmt.ExecContext(ctx, orderID, customerEmailAddress, amount, operation, transactionDate)
 	if err != nil {
 		return err
 	}

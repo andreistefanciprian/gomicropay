@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -9,8 +10,12 @@ import (
 	"sync"
 
 	"github.com/IBM/sarama"
+	"github.com/XSAM/otelsql"
 	"github.com/andreistefanciprian/gomicropay/ledger/internal/ledger"
+	"github.com/andreistefanciprian/gomicropay/ledger/internal/tracing"
 	_ "github.com/go-sql-driver/mysql"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -47,7 +52,14 @@ type LedgerMsg struct {
 
 func main() {
 
-	var err error
+	// Initialise tracing
+	tp, err := tracing.InitTracer("ledger")
+	if err != nil {
+		log.Fatalf("failed to initialize tracer: %v", err)
+	}
+	defer tp.Shutdown(context.Background())
+	tracer := tp.Tracer("ledger-tracer")
+
 	logLevel = os.Getenv("LOG_LEVEL")
 	if logLevel == "" {
 		logLevel = "INFO"
@@ -64,7 +76,8 @@ func main() {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPassword, dbHost, dbPort, dbName)
 
 	// DB connection
-	db, err = sql.Open(dbDriver, dsn)
+	// Instrumented DB connection
+	db, err = otelsql.Open("mysql", dsn, otelsql.WithTracerProvider(tp))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -88,25 +101,27 @@ func main() {
 	sarama.Logger = log.New(os.Stdout, "[ledger-consumer]", log.LstdFlags)
 	config := sarama.NewConfig()
 	config.Producer.Return.Successes = true
-	ledgerConsumer, err := sarama.NewConsumer([]string{brokerAddr}, config)
+	consumer, err := sarama.NewConsumer([]string{brokerAddr}, config)
 	if err != nil {
 		log.Fatal("Error creating ledger consumer:", err)
 	}
 	defer func() {
 		close(done)
-		if err := ledgerConsumer.Close(); err != nil {
+		if err := consumer.Close(); err != nil {
 			log.Println("Error closing ledger consumer:", err)
 		}
 	}()
 
-	partitions, err := ledgerConsumer.Partitions(topic)
+	ledgerConsumer := NewLedgerConsumer(tracer, db, consumer)
+
+	partitions, err := ledgerConsumer.consumer.Partitions(topic)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	for _, partition := range partitions {
 		logInfo("Starting ledger consumer for partition %d", partition)
-		partitionConsumer, err := ledgerConsumer.ConsumePartition(topic, partition, sarama.OffsetNewest)
+		partitionConsumer, err := ledgerConsumer.consumer.ConsumePartition(topic, partition, sarama.OffsetNewest)
 		if err != nil {
 			log.Fatal("Error creating partition consumer:", err)
 		}
@@ -117,20 +132,36 @@ func main() {
 		}()
 
 		wg.Add(1)
-		go awaitMessages(partitionConsumer, partition, done)
+		go ledgerConsumer.awaitMessages(partitionConsumer, partition, done)
 	}
 
 	wg.Wait()
 }
 
-func awaitMessages(partitionConsumer sarama.PartitionConsumer, partition int32, done chan struct{}) {
+type LedgerConsumer struct {
+	tracer     trace.Tracer
+	propagator propagation.TextMapPropagator
+	db         *sql.DB
+	consumer   sarama.Consumer
+}
+
+func NewLedgerConsumer(tracer trace.Tracer, db *sql.DB, consumer sarama.Consumer) *LedgerConsumer {
+	return &LedgerConsumer{
+		tracer:     tracer,
+		propagator: propagation.TraceContext{},
+		db:         db,
+		consumer:   consumer,
+	}
+}
+
+func (l *LedgerConsumer) awaitMessages(partitionConsumer sarama.PartitionConsumer, partition int32, done chan struct{}) {
 	defer wg.Done()
 	for {
 		select {
 		case msg := <-partitionConsumer.Messages():
 			logInfo("Partition %d: Received message", partition)
 			logDebug("Partition %d: Message body: %s", partition, string(msg.Value))
-			handleMessage(msg)
+			l.handleMessage(msg)
 		case <-done:
 			logInfo("Received Done signal. Partition %d: Shutting down consumer", partition)
 			return
@@ -138,16 +169,29 @@ func awaitMessages(partitionConsumer sarama.PartitionConsumer, partition int32, 
 	}
 }
 
-func handleMessage(msg *sarama.ConsumerMessage) {
+func (l *LedgerConsumer) handleMessage(msg *sarama.ConsumerMessage) {
+	// Extract trace context from Kafka headers
+	carrier := propagation.MapCarrier{}
+	for _, h := range msg.Headers {
+		carrier[string(h.Key)] = string(h.Value)
+	}
+	ctx := context.Background()
+	ctx = l.propagator.Extract(ctx, carrier)
+
+	ctx, span := l.tracer.Start(ctx, "handleMessage")
+	defer span.End()
+
 	var ledgerlMsg LedgerMsg
 	if err := json.Unmarshal(msg.Value, &ledgerlMsg); err != nil {
 		logInfo("Error unmarshalling message: %v", err)
+		span.RecordError(err)
 		return
 	}
 	logDebug("LedgerMsg unmarshalled: %+v", ledgerlMsg)
-	err := ledger.Insert(db, ledgerlMsg.OrderID, ledgerlMsg.CustomerEmailAddress, ledgerlMsg.Amount, ledgerlMsg.Operation, ledgerlMsg.Date)
+	err := ledger.Insert(ctx, l.tracer, db, ledgerlMsg.OrderID, ledgerlMsg.CustomerEmailAddress, ledgerlMsg.Amount, ledgerlMsg.Operation, ledgerlMsg.Date)
 	if err != nil {
 		logInfo("Error inserting ledger message: %v", err)
+		span.RecordError(err)
 		return
 	}
 	logInfo("Ledger message inserted for order %s, customer email %s", ledgerlMsg.OrderID, ledgerlMsg.CustomerEmailAddress)

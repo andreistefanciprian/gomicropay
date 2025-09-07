@@ -7,12 +7,14 @@ This repository is a hands-on way to learn about microservice architecture using
 
 ## Distributed Tracing with OpenTelemetry
 
-This project uses **OpenTelemetry** for distributed tracing across the `api-gateway`, `auth`, and `money-movement` microservices. All major service and database operations are instrumented, allowing you to follow requests end-to-end through the system.
+This project uses **OpenTelemetry** for distributed tracing across the all microservices. All major service and database operations are instrumented, allowing you to follow requests end-to-end through the system.
 
 - Tracing is enabled in:
   - **API Gateway** (HTTP/gRPC client)
   - **Auth Service** (gRPC server, DB queries)
-  - **Money Movement Service** (gRPC server, DB queries)
+  - **Money Movement Service** (gRPC server, DB queries, Kafka Producer)
+  - **Ledger Service** (Kafka Consumer, DB queries)
+  - **Email Service** (Kafka Consumer)
 - Context propagation ensures unified traces across all services.
 - Database queries are traced using otelsql for MySQL.
 

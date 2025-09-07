@@ -6,8 +6,13 @@ import (
 	"os"
 	"sync"
 
+	"context"
+
 	"github.com/IBM/sarama"
 	"github.com/andreistefanciprian/gomicropay/email/internal/email"
+	"github.com/andreistefanciprian/gomicropay/email/internal/tracing"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const topic = "email"
@@ -34,6 +39,16 @@ type EmailMsg struct {
 }
 
 func main() {
+
+	// Initialise tracing
+	tp, err := tracing.InitTracer("email")
+	if err != nil {
+		log.Fatalf("failed to initialize tracer: %v", err)
+	}
+	defer tp.Shutdown(context.Background())
+	tracer := tp.Tracer("email-tracer")
+	emailConsumer := NewEmailConsumer(tracer)
+
 	logLevel = os.Getenv("LOG_LEVEL")
 	if logLevel == "" {
 		logLevel = "INFO"
@@ -76,20 +91,32 @@ func main() {
 		}()
 
 		wg.Add(1)
-		go awaitMessages(partitionConsumer, partition, done)
+		go emailConsumer.awaitMessages(partitionConsumer, partition, done)
 	}
 
 	wg.Wait()
 }
 
-func awaitMessages(partitionConsumer sarama.PartitionConsumer, partition int32, done chan struct{}) {
+type EmailConsumer struct {
+	tracer     trace.Tracer
+	propagator propagation.TextMapPropagator
+}
+
+func NewEmailConsumer(tracer trace.Tracer) *EmailConsumer {
+	return &EmailConsumer{
+		tracer:     tracer,
+		propagator: propagation.TraceContext{},
+	}
+}
+
+func (ec *EmailConsumer) awaitMessages(partitionConsumer sarama.PartitionConsumer, partition int32, done chan struct{}) {
 	defer wg.Done()
 	for {
 		select {
 		case msg := <-partitionConsumer.Messages():
 			logInfo("Partition %d: Received message", partition)
 			logDebug("Partition %d: Message body: %s", partition, string(msg.Value))
-			handleMessage(msg)
+			ec.handleMessage(msg)
 		case <-done:
 			logInfo("Received Done signal. Partition %d: Shutting down consumer", partition)
 			return
@@ -97,16 +124,29 @@ func awaitMessages(partitionConsumer sarama.PartitionConsumer, partition int32, 
 	}
 }
 
-func handleMessage(msg *sarama.ConsumerMessage) {
+func (ec *EmailConsumer) handleMessage(msg *sarama.ConsumerMessage) {
+	// Extract trace context from Kafka headers
+	carrier := propagation.MapCarrier{}
+	for _, h := range msg.Headers {
+		carrier[string(h.Key)] = string(h.Value)
+	}
+	ctx := context.Background()
+	ctx = ec.propagator.Extract(ctx, carrier)
+
+	ctx, span := ec.tracer.Start(ctx, "handleMessage")
+	defer span.End()
+
 	var emailMsg EmailMsg
 	if err := json.Unmarshal(msg.Value, &emailMsg); err != nil {
 		logInfo("Error unmarshalling message: %v", err)
+		span.RecordError(err)
 		return
 	}
 	logDebug("EmailMsg unmarshalled: %+v", emailMsg)
 	err := email.Send(emailMsg.EmailAddress, emailMsg.OrderID)
 	if err != nil {
 		logInfo("Error sending email: %v", err)
+		span.RecordError(err)
 		return
 	}
 	logInfo("Email sent to user %s for order %s", emailMsg.EmailAddress, emailMsg.OrderID)
