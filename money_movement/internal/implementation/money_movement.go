@@ -277,7 +277,8 @@ func (i *Implementation) Capture(ctx context.Context, capturePayload *pb.Capture
 
 	// Send Kafka message
 	logInfo("Sending Kafka messages for transaction: pid=%s", authorizeTransaction.pid)
-	producer.SendCaptureMessage(i.producer, authorizeTransaction.pid, authorizeTransaction.srcEmailAddress, authorizeTransaction.amount)
+	p := producer.NewKafkaProducer(i.producer, i.tracer)
+	p.SendCaptureMessage(ctx, authorizeTransaction.pid, authorizeTransaction.srcEmailAddress, authorizeTransaction.amount)
 
 	return &emptypb.Empty{}, nil
 }
