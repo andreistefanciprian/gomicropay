@@ -2,14 +2,13 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log"
 	"net"
 	"os"
 
-	"github.com/XSAM/otelsql"
 	"github.com/andreistefanciprian/gomicropay/auth/internal/implementation/auth"
+	"github.com/andreistefanciprian/gomicropay/auth/internal/implementation/db"
 	"github.com/andreistefanciprian/gomicropay/auth/internal/tracing"
 	pb "github.com/andreistefanciprian/gomicropay/auth/proto"
 	_ "github.com/go-sql-driver/mysql"
@@ -17,8 +16,6 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"google.golang.org/grpc"
 )
-
-var db *sql.DB
 
 func main() {
 	// Initialise tracing
@@ -37,25 +34,12 @@ func main() {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPassword, dbHost, dbPort, dbName)
 
 	// Instrumented DB connection
-	db, err = otelsql.Open("mysql", dsn, otelsql.WithTracerProvider(tp))
+	mySql, err := db.NewMysqlDb("mysql", dsn, tp)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	defer func() {
-		if err = db.Close(); err != nil {
-			log.Printf("Error closing database connection: %v", err)
-		}
-		log.Println("Database connection closed")
-	}()
-
-	// Ping db
-	if err = db.Ping(); err != nil {
-
-		log.Fatalf("Failed to connect to the database: %v", err)
-	} else {
-		log.Println("Database connection established")
-	}
+	defer mySql.Close()
 
 	// Instrumented gRPC server setup
 	grpcServer := grpc.NewServer(
@@ -71,7 +55,7 @@ func main() {
 		// grpc.ChainUnaryInterceptor(recoveryUnaryServerInterceptor()),
 	)
 
-	authServerImplementation := auth.NewAuthImplementation(db, tracer)
+	authServerImplementation := auth.NewAuthImplementation(mySql, tracer)
 	pb.RegisterAuthServiceServer(grpcServer, authServerImplementation)
 
 	// listen and serve
