@@ -66,11 +66,8 @@ func (i *Implementation) RetrieveHashedPassword(ctx context.Context, userEmail *
 	)
 
 	logDebug("RetrieveHashedPassword called for email: %s", userEmail.GetUserEmail())
-	type user struct {
-		passwordHash string
-	}
 
-	var u user
+	var passwordHash string
 
 	stmt, err := i.db.PrepareContext(ctx, selectPasswordHashQuery)
 	if err != nil {
@@ -80,7 +77,7 @@ func (i *Implementation) RetrieveHashedPassword(ctx context.Context, userEmail *
 	}
 	defer stmt.Close()
 
-	err = stmt.QueryRowContext(ctx, userEmail.GetUserEmail()).Scan(&u.passwordHash)
+	err = stmt.QueryRowContext(ctx, userEmail.GetUserEmail()).Scan(&passwordHash)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			logInfo("RetrieveHashedPassword failed: no rows for email: %s", userEmail.GetUserEmail())
@@ -90,7 +87,7 @@ func (i *Implementation) RetrieveHashedPassword(ctx context.Context, userEmail *
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	logInfo("RetrieveHashedPassword succeeded for email: %s", userEmail.GetUserEmail())
-	return &pb.HashedPassword{HashedPassword: u.passwordHash}, nil
+	return &pb.HashedPassword{HashedPassword: passwordHash}, nil
 }
 
 func (i *Implementation) CheckUserExists(ctx context.Context, in *pb.UserEmailAddress) (*pb.UserExistsResponse, error) {
