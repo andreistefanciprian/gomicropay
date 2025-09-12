@@ -7,8 +7,8 @@ import (
 	"net"
 	"os"
 
+	"github.com/andreistefanciprian/gomicropay/auth/internal/db"
 	"github.com/andreistefanciprian/gomicropay/auth/internal/implementation/auth"
-	"github.com/andreistefanciprian/gomicropay/auth/internal/implementation/db"
 	"github.com/andreistefanciprian/gomicropay/auth/internal/tracing"
 	pb "github.com/andreistefanciprian/gomicropay/auth/proto"
 	_ "github.com/go-sql-driver/mysql"
@@ -61,6 +61,9 @@ func main() {
 	// listen and serve
 	authPort := os.Getenv("AUTH_SERVICE_PORT")
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%s", authPort))
+	if err != nil {
+		log.Fatalf("Failed to listen: %v", err)
+	}
 	if err := grpcServer.Serve(listener); err != nil {
 		log.Fatalf("Failed to serve gRPC server: %v", err)
 	}
