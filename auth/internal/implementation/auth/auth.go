@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/andreistefanciprian/gomicropay/auth/internal/implementation/db"
+	"github.com/andreistefanciprian/gomicropay/auth/internal/db"
 	pb "github.com/andreistefanciprian/gomicropay/auth/proto"
 	jwt "github.com/golang-jwt/jwt/v5"
 	"go.opentelemetry.io/otel/attribute"
