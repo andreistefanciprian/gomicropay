@@ -1,4 +1,4 @@
-name: api-gateway container image build and push to DockerHub
+name: money-movement container image build and push to DockerHub
 
 on:
   push:
@@ -7,17 +7,17 @@ on:
     branches:
       - 'main'
     paths:
-      - 'api_gateway/go.*'
-      - 'api_gateway/**/*.go'
-      - 'api_gateway/infra/Dockerfile'
-      - '.github/workflows/docker-api-gateway.yaml'
+      - 'money_movement/go.*'
+      - 'money_movement/**/*.go'
+      - 'money_movement/infra/Dockerfile'
+      - '.github/workflows/docker-money-movement.yaml'
   pull_request:
     branches: [ 'main' ]
     paths:
-      - 'api_gateway/go.*'
-      - 'api_gateway/**/*.go'
-      - 'api_gateway/infra/Dockerfile'
-      - '.github/workflows/docker-api-gateway.yaml'
+      - 'money_movement/go.*'
+      - 'money_movement/**/*.go'
+      - 'money_movement/infra/Dockerfile'
+      - '.github/workflows/docker-money-movement.yaml'
   workflow_dispatch:
   
 permissions:
@@ -47,9 +47,9 @@ jobs:
     needs: [generate-build-id]
     uses: andreistefanciprian/gh-reusable-workflows/.github/workflows/build_and_push_docker_image_to_dockerhub.yaml@main
     with:
-      image_name: andreistefanciprian/gomicropay-gateway
+      image_name: andreistefanciprian/gomicropay-money-movement
       image_tag: ${{ needs.generate-build-id.outputs.BUILD_ID }}
       dockerhub_username: andreistefanciprian
-      file: api_gateway/infra/Dockerfile
-      context: ./api_gateway
+      file: money_movement/infra/Dockerfile
+      context: ./money_movement
     secrets: inherit
