@@ -173,7 +173,7 @@ services:
       - ./ledger/infra/k8s/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
 
   jaeger:
-    image: jaegertracing/all-in-one:1.54
+    image: jaegertracing/all-in-one:1.60
     ports:
       - "16686:16686"   # Jaeger UI
       - "6831:6831/udp" # Jaeger agent UDP
