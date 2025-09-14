@@ -1,13 +1,25 @@
 {
   "extends": ["config:best-practices"],
   "kubernetes": {
-    "managerFilePatterns": ["/^api_gateway\\/infra\\/k8s\\/.+\\.ya?ml$/"]
+    "managerFilePatterns": [
+        "/^api_gateway\\/infra\\/k8s\\/.+\\.ya?ml$/",
+        "/^auth\\/infra\\/k8s\\/.+\\.ya?ml$/",
+        "/^email\\/infra\\/k8s\\/.+\\.ya?ml$/",
+        "/^ledger\\/infra\\/k8s\\/.+\\.ya?ml$/",
+        "/^money_movement\\/infra\\/k8s\\/.+\\.ya?ml$/"
+    ]
   },
   "packageRules": [
     {
       "matchDatasources": ["docker"],
-      "matchPackageNames": ["andreistefanciprian/gomicropay-gateway"],
-      "automerge": false,
+      "matchPackageNames": [
+        "andreistefanciprian/gomicropay-gateway",
+        "andreistefanciprian/gomicropay-auth",
+        "andreistefanciprian/gomicropay-email",
+        "andreistefanciprian/gomicropay-ledger",
+        "andreistefanciprian/gomicropay-money-movement"
+    ],
+      "automerge": true,
       "automergeType": "branch"
     }
   ]
