@@ -33,7 +33,7 @@ jobs:
       BUILD_ID: ${{ steps.prep.outputs.BUILD_ID }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Generate build ID
         id: prep
