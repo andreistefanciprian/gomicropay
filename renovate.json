@@ -1,0 +1,14 @@
+{
+  "extends": ["config:base"],
+  "kubernetes": {
+    "fileMatch": [".*\\.yaml$"]
+  },
+  "packageRules": [
+    {
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["andreistefanciprian/gomicropay-gateway"],
+      "automerge": false,
+      "automergeType": "branch"
+    }
+  ]
+}
