@@ -38,7 +38,7 @@ services:
         condition: service_healthy
         restart: true
   mysql-auth:
-    image: mysql:8.4
+    image: mysql:8.4@sha256:6e60ad6d61d8e7f0a4fd07f6b14109331d66a2f0d089e4b7a1f485d671a29604
     environment:
       MYSQL_ROOT_PASSWORD: Admin123
     ports:
@@ -112,7 +112,7 @@ services:
         condition: service_healthy
 
   broker:
-    image: apache/kafka:latest
+    image: apache/kafka:latest@sha256:3f7b939115cd4872e9cee9369d80bd69712fde55f9902f46d793f64848dedc75
     hostname: broker
     container_name: broker
     ports:
@@ -145,7 +145,7 @@ services:
       retries: 10
 
   mysql-money-movement:
-    image: mysql:8.4
+    image: mysql:8.4@sha256:6e60ad6d61d8e7f0a4fd07f6b14109331d66a2f0d089e4b7a1f485d671a29604
     environment:
       MYSQL_ROOT_PASSWORD: Admin123
     ports:
@@ -159,7 +159,7 @@ services:
       - ./money_movement/infra/k8s/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
 
   mysql-ledger:
-    image: mysql:8.4
+    image: mysql:8.4@sha256:6e60ad6d61d8e7f0a4fd07f6b14109331d66a2f0d089e4b7a1f485d671a29604
     environment:
       MYSQL_ROOT_PASSWORD: Admin123
     ports:
@@ -173,7 +173,7 @@ services:
       - ./ledger/infra/k8s/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
 
   jaeger:
-    image: jaegertracing/all-in-one:1.60
+    image: jaegertracing/all-in-one:1.60@sha256:4fd2d70fa347d6a47e79fcb06b1c177e6079f92cba88b083153d56263082135e
     ports:
       - "16686:16686"   # Jaeger UI
       - "6831:6831/udp" # Jaeger agent UDP
