@@ -38,7 +38,7 @@ services:
         condition: service_healthy
         restart: true
   mysql-auth:
-    image: mysql:8.0
+    image: mysql:8.4
     environment:
       MYSQL_ROOT_PASSWORD: Admin123
     ports:
@@ -145,7 +145,7 @@ services:
       retries: 10
 
   mysql-money-movement:
-    image: mysql:8.0
+    image: mysql:8.4
     environment:
       MYSQL_ROOT_PASSWORD: Admin123
     ports:
@@ -159,7 +159,7 @@ services:
       - ./money_movement/infra/k8s/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
 
   mysql-ledger:
-    image: mysql:8.0
+    image: mysql:8.4
     environment:
       MYSQL_ROOT_PASSWORD: Admin123
     ports:
