@@ -19,4 +19,6 @@ COPY --from=build /app/gateway .
 # Use the nonroot user (UID 65532)
 USER nonroot:nonroot
 
+EXPOSE 8080
+
 ENTRYPOINT ["/app/gateway"]
