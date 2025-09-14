@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	github.com/IBM/sarama v1.46.0
-	github.com/XSAM/otelsql v0.39.0
+	github.com/XSAM/otelsql v0.40.0
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/gogo/status v1.1.1
 	github.com/google/uuid v1.6.0
