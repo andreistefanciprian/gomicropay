@@ -38,7 +38,7 @@ services:
         condition: service_healthy
         restart: true
   mysql-auth:
-    image: mysql:8.4@sha256:6e60ad6d61d8e7f0a4fd07f6b14109331d66a2f0d089e4b7a1f485d671a29604
+    image: mysql:9.4@sha256:94254b456a6db9b56c83525a86bff4c7f1e52335f934cbed686fe1ce763116a0
     environment:
       MYSQL_ROOT_PASSWORD: Admin123
     ports:
@@ -145,7 +145,7 @@ services:
       retries: 10
 
   mysql-money-movement:
-    image: mysql:8.4@sha256:6e60ad6d61d8e7f0a4fd07f6b14109331d66a2f0d089e4b7a1f485d671a29604
+    image: mysql:9.4@sha256:94254b456a6db9b56c83525a86bff4c7f1e52335f934cbed686fe1ce763116a0
     environment:
       MYSQL_ROOT_PASSWORD: Admin123
     ports:
@@ -159,7 +159,7 @@ services:
       - ./money_movement/infra/k8s/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
 
   mysql-ledger:
-    image: mysql:8.4@sha256:6e60ad6d61d8e7f0a4fd07f6b14109331d66a2f0d089e4b7a1f485d671a29604
+    image: mysql:9.4@sha256:94254b456a6db9b56c83525a86bff4c7f1e52335f934cbed686fe1ce763116a0
     environment:
       MYSQL_ROOT_PASSWORD: Admin123
     ports:
