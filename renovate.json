@@ -1,8 +1,7 @@
 {
-  "extends": ["config:base"],
+  "extends": ["config:best-practices"],
   "kubernetes": {
-    "fileMatch": ["/api_gateway/infra/k8s/.*\\.yaml$"],
-    "pinDigests": true
+    "managerFilePatterns": ["/^api_gateway\\/infra\\/k8s\\/.+\\.ya?ml$/"]
   },
   "packageRules": [
     {
