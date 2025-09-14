@@ -1,0 +1,14 @@
+{
+  "extends": ["config:base"],
+  "kubernetes": {
+    "fileMatch": ["/api_gateway/infra/k8s/.*\\.yaml$"]
+  },
+  "packageRules": [
+    {
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["andreistefanciprian/gomicropay-gateway"],
+      "automerge": false,
+      "automergeType": "branch"
+    }
+  ]
+}
