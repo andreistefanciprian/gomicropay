@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: gateway
-          image: andreistefanciprian/gomicropay-gateway@sha256:a53f79ad647c4c160b2ac1d23f49633491625d998b7f4258a03863f43b92a28d
+          image: andreistefanciprian/gomicropay-gateway@sha256:3a4086e2c0fd85f4ab1f2670118364136efaa94738a09b52acd5519ae9296198
           imagePullPolicy: Always
           envFrom:
             - secretRef:
