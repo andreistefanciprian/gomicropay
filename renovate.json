@@ -7,7 +7,7 @@
     {
       "matchDatasources": ["docker"],
       "matchPackageNames": ["andreistefanciprian/gomicropay-gateway"],
-      "automerge": false,
+      "automerge": true,
       "automergeType": "branch"
     }
   ]
