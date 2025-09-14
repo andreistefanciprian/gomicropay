@@ -1,7 +1,8 @@
 {
   "extends": ["config:base"],
   "kubernetes": {
-    "fileMatch": ["/api_gateway/infra/k8s/.*\\.yaml$"]
+    "fileMatch": ["/api_gateway/infra/k8s/.*\\.yaml$"],
+    "pinDigests": true
   },
   "packageRules": [
     {
