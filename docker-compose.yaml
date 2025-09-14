@@ -12,6 +12,7 @@ services:
       AUTH_HOST: "auth"
       AUTH_PORT: "9000"
       LOG_LEVEL: "DEBUG"
+      API_GATEWAY_PORT: "8080"
       OTEL_EXPORTER_OTLP_ENDPOINT: "jaeger:4318"
     depends_on:
       auth:

@@ -8,3 +8,4 @@ data:
   AUTH_HOST: "auth.auth.svc.cluster.local"
   AUTH_PORT: "9000"
   LOG_LEVEL: "DEBUG"
+  API_GATEWAY_PORT: "8080"

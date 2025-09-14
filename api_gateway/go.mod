@@ -3,6 +3,7 @@ module github.com/andreistefanciprian/gomicropay/api_gateway
 go 1.24.0
 
 require (
+	github.com/sirupsen/logrus v1.9.3
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.63.0
 	go.opentelemetry.io/otel v1.38.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.38.0
