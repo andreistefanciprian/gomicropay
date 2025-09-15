@@ -105,7 +105,7 @@ func (i *MySqlDb) RegisterUser(ctx context.Context, user *pb.UserRegistrationFor
 		return err
 	}
 	if rowsAffected == 0 {
-		i.logger.Warn("User registration failed: no user was added for email ", user.GetUserEmail())
+		i.logger.Warnf("User registration failed: no user was added for email %s", user.GetUserEmail())
 		return sql.ErrNoRows
 	}
 	i.logger.Infof("User registered successfully: %s", user.GetUserEmail())
