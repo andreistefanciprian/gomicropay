@@ -112,7 +112,7 @@ func (i *Implementation) GenerateToken(ctx context.Context, email *pb.UserEmailA
 	i.logger.Debugf("GenerateToken called for email: %s", email.GetUserEmail())
 	jwToken, err := createJWT(email.GetUserEmail())
 	if err != nil {
-		i.logger.Error("GenerateToken failed: JWT creation error: ", err)
+		i.logger.Errorf("GenerateToken failed: JWT creation error: %v", err)
 		return nil, err
 	}
 	i.logger.Infof("GenerateToken succeeded for email: %s", email.GetUserEmail())
