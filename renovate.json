@@ -1,7 +1,7 @@
 {
-  "extends": [
-    "config:best-practices"
-  ],
+  "extends": ["config:best-practices"],
+  "platformAutomerge": true,
+  
   "prConcurrentLimit": 0,
   "branchConcurrentLimit": 0,
   "prHourlyLimit": 0,
@@ -44,7 +44,7 @@
       "groupName": "K8s image digests",
       "automerge": true,
       "automergeType": "pr",
-      "platformAutomerge": true
+      "ignoreTests": true
     }
   ]
 }
