@@ -128,7 +128,7 @@ func (i *Implementation) VerifyToken(ctx context.Context, token *pb.Token) (*pb.
 	key := []byte(os.Getenv("SIGNING_KEY"))
 	emailAddress, err := validateJWT(token.Jwt, key)
 	if err != nil {
-		i.logger.Error("VerifyToken failed: JWT validation error: ", err)
+		i.logger.Errorf("VerifyToken failed: JWT validation error: %v", err)
 		return nil, err
 	}
 	i.logger.Infof("VerifyToken succeeded for email: %s", emailAddress)
