@@ -70,7 +70,7 @@ func (i *Implementation) CheckUserExists(ctx context.Context, in *pb.UserEmailAd
 	exists, err := i.db.CheckUserExists(ctx, in.GetUserEmail())
 	if err != nil {
 		span.AddEvent("CheckUserExists failed: db op", trace.WithAttributes())
-		i.logger.Error("CheckUserExists failed: query error: ", err)
+		i.logger.Errorf("CheckUserExists failed: query error: %v", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
