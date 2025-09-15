@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: money-movement
-          image: andreistefanciprian/gomicropay-money-movement:latest@sha256:ac501f941f587e6658af8fa4449fe70c33fc639e55266897b1d5339414280552
+          image: andreistefanciprian/gomicropay-money-movement:latest@sha256:d20bc05f2f45b72ebfebeedd7f216d08c2015ef951395970f72526f4c81655fd
           imagePullPolicy: Always
           envFrom:
             - secretRef:
