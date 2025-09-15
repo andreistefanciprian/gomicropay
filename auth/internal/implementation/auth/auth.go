@@ -91,7 +91,7 @@ func (i *Implementation) RegisterUser(ctx context.Context, user *pb.UserRegistra
 	err := i.db.RegisterUser(ctx, user)
 	if err != nil {
 		span.AddEvent("RegisterUser failed: exec error", trace.WithAttributes())
-		i.logger.Error("RegisterUser failed: exec error: ", err)
+		i.logger.Errorf("RegisterUser failed: exec error: %v", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
