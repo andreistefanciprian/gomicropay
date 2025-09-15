@@ -41,6 +41,9 @@ var (
 
 func main() {
 
+	// Initialize logger
+	initLogger()
+
 	// Initialise tracing
 	tp, err := tracing.InitTracer("ledger")
 	if err != nil {
@@ -49,27 +52,23 @@ func main() {
 	defer tp.Shutdown(context.Background())
 	tracer := tp.Tracer("ledger-tracer")
 
-	// Initialize logger
-	initLogger()
-
+	// Initialize DB connection
 	dbUser := os.Getenv("MYSQL_USER")
 	dbPassword := os.Getenv("MYSQL_PASSWORD")
 	dbName := os.Getenv("MYSQL_DB")
 	dbHost := os.Getenv("MYSQL_HOST")
 	dbPort := os.Getenv("MYSQL_PORT")
-	kafkaHost := os.Getenv("KAFKA_HOST")
-	kafkaPort := os.Getenv("KAFKA_PORT")
-	brokerAddr := fmt.Sprintf("%s:%s", kafkaHost, kafkaPort)
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPassword, dbHost, dbPort, dbName)
-
-	// Initialise DB
 	mySqlConn, err := db.NewMysqlDb(dbDriver, dsn, tp, logger)
 	if err != nil {
 		logger.Fatal(err)
 	}
 	defer mySqlConn.Close()
 
-	// Kafka consumer setup
+	// Initialize Kafka consumer
+	kafkaHost := os.Getenv("KAFKA_HOST")
+	kafkaPort := os.Getenv("KAFKA_PORT")
+	brokerAddr := fmt.Sprintf("%s:%s", kafkaHost, kafkaPort)
 	done := make(chan struct{})
 	sarama.Logger = log.New(os.Stdout, "[ledger-consumer]", log.LstdFlags)
 	config := sarama.NewConfig()
