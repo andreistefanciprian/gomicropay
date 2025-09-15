@@ -5,6 +5,16 @@ This repository is a hands-on way to learn about microservice architecture using
 ![Architecture Overview](microservices_architecture.jpg)
 
 
+## CI/CD and Dependency Automation
+
+- **GitHub Actions** automatically build and publish container images for all microservices whenever changes are pushed. Each build includes a Software Bill of Materials (SBOM) and supply chain attestations for enhanced security and traceability.
+- **Renovate** is enabled for this repository to keep dependencies up to date:
+  - Go module dependencies are automatically updated via PRs.
+  - Kubernetes manifests are scanned for container image updates, and PRs are created to update image tags and digests.
+
+This ensures the codebase and deployments are always up to date and secure with minimal manual intervention.
+
+
 ## Distributed Tracing with OpenTelemetry
 
 This project uses **OpenTelemetry** for distributed tracing across the all microservices. All major service and database operations are instrumented, allowing you to follow requests end-to-end through the system.
