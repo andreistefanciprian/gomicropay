@@ -21,6 +21,7 @@ func initLogger() *logrus.Logger {
 	logger.SetLevel(level)
 	logger.SetFormatter(&logrus.TextFormatter{
 		FullTimestamp: true,
+		DisableColors: false,
 	})
 	return logger
 }
