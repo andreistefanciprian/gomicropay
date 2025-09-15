@@ -3,10 +3,10 @@ package db
 import (
 	"context"
 	"database/sql"
-	"log"
 
 	"github.com/XSAM/otelsql"
 	pb "github.com/andreistefanciprian/gomicropay/auth/proto"
+	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/sdk/trace"
 )
 
@@ -24,34 +24,36 @@ type AuthRepository interface {
 }
 
 type MySqlDb struct {
-	db *sql.DB
+	db     *sql.DB
+	logger *logrus.Logger
 }
 
-func NewMysqlDb(dbName string, dsn string, trace *trace.TracerProvider) (*MySqlDb, error) { // Instrumented DB connection
+// NewMysqlDb creates a new MySqlDb instance with an instrumented DB connection
+func NewMysqlDb(dbName string, dsn string, trace *trace.TracerProvider, logger *logrus.Logger) (*MySqlDb, error) {
 	db, err := otelsql.Open(dbName, dsn, otelsql.WithTracerProvider(trace))
 	if err != nil {
 		return &MySqlDb{}, err
 	}
-
 	// Ping db
 	if err = db.Ping(); err != nil {
-		log.Fatalf("Failed to connect to the database: %v", err)
+		return &MySqlDb{}, err
 	} else {
-		log.Println("Database connection established")
+		logger.Info("Database connection established")
 	}
-
-	return &MySqlDb{db: db}, nil
+	return &MySqlDb{db: db, logger: logger}, nil
 }
 
+// Close the database connection
 func (i *MySqlDb) Close() error {
 	if err := i.db.Close(); err != nil {
-		log.Printf("Error closing database connection: %v", err)
+		i.logger.Error("Error closing database connection: ", err)
 		return err
 	}
-	log.Println("Database connection closed")
+	i.logger.Info("Database connection closed")
 	return nil
 }
 
+// RetrieveHashedPassword fetches the password hash for a given email
 func (i *MySqlDb) RetrieveHashedPassword(ctx context.Context, email string) (string, error) {
 	var passwordHash string
 	stmt, err := i.db.PrepareContext(ctx, selectPasswordHashQuery)
@@ -63,9 +65,11 @@ func (i *MySqlDb) RetrieveHashedPassword(ctx context.Context, email string) (str
 	if err != nil {
 		return "", err
 	}
+	i.logger.Info("Retrieved password hash for email: ", email)
 	return passwordHash, nil
 }
 
+// CheckUserExists checks if a user exists for a given email
 func (i *MySqlDb) CheckUserExists(ctx context.Context, email string) (bool, error) {
 	stmt, err := i.db.PrepareContext(ctx, checkUserExistsQuery)
 	if err != nil {
@@ -80,9 +84,11 @@ func (i *MySqlDb) CheckUserExists(ctx context.Context, email string) (bool, erro
 	if count == 0 {
 		return false, nil
 	}
+	i.logger.Info("User exists: ", email)
 	return true, nil
 }
 
+// RegisterUser registers a new user in the database
 func (i *MySqlDb) RegisterUser(ctx context.Context, user *pb.UserRegistrationForm) error {
 	stmt, err := i.db.PrepareContext(ctx, insertUserQuery)
 	if err != nil {
@@ -90,9 +96,18 @@ func (i *MySqlDb) RegisterUser(ctx context.Context, user *pb.UserRegistrationFor
 	}
 	defer stmt.Close()
 
-	_, err = stmt.ExecContext(ctx, user.GetFirstName(), user.GetLastName(), user.GetUserEmail(), user.GetPasswordHash())
+	result, err := stmt.ExecContext(ctx, user.GetFirstName(), user.GetLastName(), user.GetUserEmail(), user.GetPasswordHash())
 	if err != nil {
 		return err
 	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		i.logger.Warn("User registration failed: no user was added for email ", user.GetUserEmail())
+		return sql.ErrNoRows
+	}
+	i.logger.Info("User registered successfully: ", user.GetUserEmail())
 	return nil
 }

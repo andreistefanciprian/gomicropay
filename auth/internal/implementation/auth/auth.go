@@ -4,54 +4,36 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"log"
 	"os"
 	"time"
 
 	"github.com/andreistefanciprian/gomicropay/auth/internal/db"
 	pb "github.com/andreistefanciprian/gomicropay/auth/proto"
 	jwt "github.com/golang-jwt/jwt/v5"
+	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-var logLevel = getLogLevel()
-
-func getLogLevel() string {
-	lvl := os.Getenv("LOG_LEVEL")
-	if lvl == "" {
-		return "INFO"
-	}
-	return lvl
-}
-
-func logInfo(format string, v ...interface{}) {
-	if logLevel == "INFO" || logLevel == "DEBUG" {
-		log.Printf("INFO: "+format, v...)
-	}
-}
-
-func logDebug(format string, v ...interface{}) {
-	if logLevel == "DEBUG" {
-		log.Printf("DEBUG: "+format, v...)
-	}
-}
-
 type Implementation struct {
 	db db.AuthRepository
 	pb.UnimplementedAuthServiceServer
 	tracer trace.Tracer
+	logger *logrus.Logger
 }
 
-func NewAuthImplementation(db db.AuthRepository, tracer trace.Tracer) *Implementation {
+// NewAuthImplementation constructs a new Implementation for the Auth service.
+func NewAuthImplementation(db db.AuthRepository, tracer trace.Tracer, logger *logrus.Logger) *Implementation {
 	return &Implementation{
 		db:     db,
 		tracer: tracer,
+		logger: logger,
 	}
 }
 
+// RetrieveHashedPassword returns the hashed password for a given user email.
 func (i *Implementation) RetrieveHashedPassword(ctx context.Context, userEmail *pb.UserEmailAddress) (*pb.HashedPassword, error) {
 	ctx, span := i.tracer.Start(ctx, "RetrieveHashedPassword")
 	defer span.End()
@@ -60,23 +42,22 @@ func (i *Implementation) RetrieveHashedPassword(ctx context.Context, userEmail *
 	span.SetAttributes(
 		attribute.String("user_email", email),
 	)
-
-	logDebug("RetrieveHashedPassword called for email: %s", email)
+	i.logger.Debugf("RetrieveHashedPassword called for email: %s", email)
 	passwordHash, err := i.db.RetrieveHashedPassword(ctx, email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			logInfo("RetrieveHashedPassword: user not found for email: %s", email)
+			i.logger.Errorf("RetrieveHashedPassword: user not found for email: %s", email)
 			return nil, status.Error(codes.NotFound, "user not found")
 		}
-		logInfo("RetrieveHashedPassword failed: query error: %v", err)
-		log.Println(err)
+		i.logger.Errorf("RetrieveHashedPassword failed: query error: %v", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	span.AddEvent("RetrieveHashedPassword succeeded", trace.WithAttributes())
-	logInfo("RetrieveHashedPassword succeeded for email: %s", email)
+	i.logger.Info("RetrieveHashedPassword succeeded for email: %s", email)
 	return &pb.HashedPassword{HashedPassword: passwordHash}, nil
 }
 
+// CheckUserExists checks if a user exists for the given email.
 func (i *Implementation) CheckUserExists(ctx context.Context, in *pb.UserEmailAddress) (*pb.UserExistsResponse, error) {
 	ctx, span := i.tracer.Start(ctx, "CheckUserExists")
 	defer span.End()
@@ -84,20 +65,20 @@ func (i *Implementation) CheckUserExists(ctx context.Context, in *pb.UserEmailAd
 	span.SetAttributes(
 		attribute.String("user_email", in.GetUserEmail()),
 	)
-
-	logDebug("CheckUserExists called for email: %s", in.GetUserEmail())
+	i.logger.Debugf("CheckUserExists called for email: %s", in.GetUserEmail())
 
 	exists, err := i.db.CheckUserExists(ctx, in.GetUserEmail())
 	if err != nil {
 		span.AddEvent("CheckUserExists failed: db op", trace.WithAttributes())
-		logInfo("CheckUserExists failed: query error: %v", err)
+		i.logger.Error("CheckUserExists failed: query error: ", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	logInfo("CheckUserExists: %v for email: %s", exists, in.GetUserEmail())
+	i.logger.Infof("CheckUserExists: %v for email: %s", exists, in.GetUserEmail())
 	return &pb.UserExistsResponse{IsUser: exists}, nil
 }
 
+// RegisterUser registers a new user in the system.
 func (i *Implementation) RegisterUser(ctx context.Context, user *pb.UserRegistrationForm) (*pb.UserRegistrationResponse, error) {
 	ctx, span := i.tracer.Start(ctx, "RegisterUser")
 	defer span.End()
@@ -105,21 +86,21 @@ func (i *Implementation) RegisterUser(ctx context.Context, user *pb.UserRegistra
 	span.SetAttributes(
 		attribute.String("user_email", user.GetUserEmail()),
 	)
-
-	logDebug("User details: FirstName=%s, LastName=%s, Email=%s", user.GetFirstName(), user.GetLastName(), user.GetUserEmail())
+	i.logger.Debugf("User details: FirstName=%s, LastName=%s, Email=%s", user.GetFirstName(), user.GetLastName(), user.GetUserEmail())
 
 	err := i.db.RegisterUser(ctx, user)
 	if err != nil {
 		span.AddEvent("RegisterUser failed: exec error", trace.WithAttributes())
-		logInfo("RegisterUser failed: exec error: %v", err)
+		i.logger.Error("RegisterUser failed: exec error: ", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	span.AddEvent("RegisterUser succeeded", trace.WithAttributes())
-	logInfo("RegisterUser succeeded for email: %s", user.GetUserEmail())
+	i.logger.Infof("RegisterUser succeeded for email: %s", user.GetUserEmail())
 	return &pb.UserRegistrationResponse{IsRegistered: true}, nil
 }
 
+// GenerateToken creates a JWT token for the given user email.
 func (i *Implementation) GenerateToken(ctx context.Context, email *pb.UserEmailAddress) (*pb.Token, error) {
 	// Start a new span for the GenerateToken operation
 	_, span := i.tracer.Start(ctx, "GenerateToken")
@@ -128,33 +109,33 @@ func (i *Implementation) GenerateToken(ctx context.Context, email *pb.UserEmailA
 	span.SetAttributes(
 		attribute.String("user_email", email.GetUserEmail()),
 	)
-
-	logDebug("GenerateToken called for email: %s", email.GetUserEmail())
+	i.logger.Debugf("GenerateToken called for email: %s", email.GetUserEmail())
 	jwToken, err := createJWT(email.GetUserEmail())
 	if err != nil {
-		logInfo("GenerateToken failed: JWT creation error: %v", err)
+		i.logger.Error("GenerateToken failed: JWT creation error: ", err)
 		return nil, err
 	}
-	logInfo("GenerateToken succeeded for email: %s", email.GetUserEmail())
+	i.logger.Infof("GenerateToken succeeded for email: %s", email.GetUserEmail())
 	return &pb.Token{Jwt: jwToken}, nil
 }
 
+// VerifyToken validates a JWT token and returns the associated user email.
 func (i *Implementation) VerifyToken(ctx context.Context, token *pb.Token) (*pb.UserEmailAddress, error) {
 	// Start a new span for the VerifyToken operation
 	_, span := i.tracer.Start(ctx, "VerifyToken")
 	defer span.End()
-
-	logDebug("VerifyToken called for token: %s", token.Jwt)
+	i.logger.Debugf("VerifyToken called for token: %s", token.Jwt)
 	key := []byte(os.Getenv("SIGNING_KEY"))
 	emailAddress, err := validateJWT(token.Jwt, key)
 	if err != nil {
-		logInfo("VerifyToken failed: JWT validation error: %v", err)
+		i.logger.Error("VerifyToken failed: JWT validation error: ", err)
 		return nil, err
 	}
-	logInfo("VerifyToken succeeded for email: %s", emailAddress)
+	i.logger.Infof("VerifyToken succeeded for email: %s", emailAddress)
 	return &pb.UserEmailAddress{UserEmail: emailAddress}, nil
 }
 
+// validateJWT parses and validates a JWT token, returning the subject (email) if valid.
 func validateJWT(tokenString string, signingKey []byte) (string, error) {
 	// parse token
 	type MyClaims struct {
@@ -177,6 +158,7 @@ func validateJWT(tokenString string, signingKey []byte) (string, error) {
 	return claims.Subject, nil
 }
 
+// createJWT generates a signed JWT token for the given email address.
 func createJWT(emailAddress string) (string, error) {
 	key := []byte(os.Getenv("SIGNING_KEY"))
 	claims := jwt.MapClaims{
