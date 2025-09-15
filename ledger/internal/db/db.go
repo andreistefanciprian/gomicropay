@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"database/sql"
-	"log"
 
 	"github.com/XSAM/otelsql"
 	"github.com/sirupsen/logrus"
@@ -27,15 +26,12 @@ func NewMysqlDb(dbName string, dsn string, trace *trace.TracerProvider, logger *
 	if err != nil {
 		return &MySqlDb{}, err
 	}
-
 	// Ping db
 	if err = db.Ping(); err != nil {
 		return &MySqlDb{}, err
 	} else {
-		log.Println("Database connection established")
-
+		logger.Info("Database connection established")
 	}
-
 	return &MySqlDb{DB: db, logger: logger}, nil
 }
 
@@ -51,16 +47,22 @@ func (m *MySqlDb) Close() error {
 
 // Insert a new ledger entry into the database
 func (m *MySqlDb) Insert(ctx context.Context, orderID, customerEmailAddress string, amount int64, operation, transactionDate string) error {
-
 	stmt, err := m.DB.PrepareContext(ctx, insertQuery)
 	if err != nil {
 		return err
 	}
-
-	_, err = stmt.ExecContext(ctx, orderID, customerEmailAddress, amount, operation, transactionDate)
+	result, err := stmt.ExecContext(ctx, orderID, customerEmailAddress, amount, operation, transactionDate)
 	if err != nil {
 		return err
 	}
-	m.logger.Info("Inserted ledger entry for order ID: ", orderID)
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		m.logger.Warn("Ledger entry insert failed: no entry was added for order ID ", orderID)
+		return sql.ErrNoRows
+	}
+	m.logger.Info("Ledger entry inserted successfully for order ID: ", orderID)
 	return nil
 }
