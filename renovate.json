@@ -1,5 +1,8 @@
 {
   "extends": ["config:best-practices"],
+  "prConcurrentLimit": 0,
+  "branchConcurrentLimit": 0,
+  "prHourlyLimit": 0,
   "kubernetes": {
     "managerFilePatterns": [
         "/^api_gateway\\/infra\\/k8s\\/.+\\.ya?ml$/",
@@ -11,6 +14,8 @@
   },
   "packageRules": [
     {
+      "description": "Automerge digest-only updates for our k8s image refs",
+      "matchManagers": ["kubernetes"],
       "matchDatasources": ["docker"],
       "matchPackageNames": [
         "andreistefanciprian/gomicropay-gateway",
@@ -19,8 +24,18 @@
         "andreistefanciprian/gomicropay-ledger",
         "andreistefanciprian/gomicropay-money-movement"
     ],
+      "matchPaths": [
+        "api_gateway/infra/k8s/**",
+        "auth/infra/k8s/**",
+        "email/infra/k8s/**",
+        "ledger/infra/k8s/**",
+        "money_movement/infra/k8s/**"
+      ],
+      "matchUpdateTypes": ["digest", "pinDigest"],
+      "groupName": "K8s image digests",
       "automerge": true,
-      "automergeType": "branch"
+      "automergeType": "pr",
+      "platformAutomerge": true
     }
   ]
 }
