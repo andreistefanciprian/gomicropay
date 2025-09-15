@@ -108,6 +108,6 @@ func (i *MySqlDb) RegisterUser(ctx context.Context, user *pb.UserRegistrationFor
 		i.logger.Warn("User registration failed: no user was added for email ", user.GetUserEmail())
 		return sql.ErrNoRows
 	}
-	i.logger.Info("User registered successfully: ", user.GetUserEmail())
+	i.logger.Infof("User registered successfully: %s", user.GetUserEmail())
 	return nil
 }
