@@ -63,6 +63,6 @@ func (m *MySqlDb) Insert(ctx context.Context, orderID, customerEmailAddress stri
 		m.logger.Warnf("Ledger entry insert failed: no entry was added for order ID %s", orderID)
 		return sql.ErrNoRows
 	}
-	m.logger.Info("Ledger entry inserted successfully for order ID: ", orderID)
+	m.logger.Infof("Ledger entry inserted successfully for order ID: %s", orderID)
 	return nil
 }
