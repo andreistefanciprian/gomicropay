@@ -84,7 +84,7 @@ func (i *MySqlDb) CheckUserExists(ctx context.Context, email string) (bool, erro
 	if count == 0 {
 		return false, nil
 	}
-	i.logger.Info("User exists: ", email)
+	i.logger.Infof("User exists: %s", email)
 	return true, nil
 }
 
