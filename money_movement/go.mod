@@ -1,6 +1,6 @@
 module github.com/andreistefanciprian/gomicropay/money_movement
 
-go 1.24.0
+go 1.25.0
 
 require (
 	github.com/IBM/sarama v1.46.0
