@@ -46,7 +46,7 @@ func (i *Implementation) RetrieveHashedPassword(ctx context.Context, userEmail *
 	passwordHash, err := i.db.RetrieveHashedPassword(ctx, email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			i.logger.Errorf("RetrieveHashedPassword: user not found for email: %s", email)
+			i.logger.Warnf("RetrieveHashedPassword: user not found for email: %s", email)
 			return nil, status.Error(codes.NotFound, "user not found")
 		}
 		i.logger.Errorf("RetrieveHashedPassword failed: query error: %v", err)
