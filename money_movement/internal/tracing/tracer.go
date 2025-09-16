@@ -2,7 +2,6 @@ package tracing
 
 import (
 	"context"
-	"log"
 	"os"
 
 	"go.opentelemetry.io/otel"
@@ -19,7 +18,7 @@ func InitTracer(serviceName string) (*trace.TracerProvider, error) {
 	}
 	exp, err := otlptracehttp.New(context.Background(), otlptracehttp.WithEndpoint(otlpEndpoint), otlptracehttp.WithInsecure())
 	if err != nil {
-		log.Fatalf("failed to create OTLP exporter: %v", err)
+		return nil, err
 	}
 	tp := trace.NewTracerProvider(
 		trace.WithBatcher(exp),
