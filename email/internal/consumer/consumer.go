@@ -34,14 +34,14 @@ func NewMessageConsumer(tracer trace.Tracer, emailService email.Sender, logger *
 	}
 }
 
-func (mc *MessageConsumer) AwaitMessages(partitionConsumer sarama.PartitionConsumer, partition int32, done chan struct{}, wg *sync.WaitGroup) {
+func (mc *MessageConsumer) ConsumeMessages(partitionConsumer sarama.PartitionConsumer, partition int32, done chan struct{}, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for {
 		select {
 		case msg := <-partitionConsumer.Messages():
 			mc.logger.Infof("Partition %d: Received message", partition)
 			mc.logger.Debugf("Partition %d: Message body: %s", partition, string(msg.Value))
-			mc.handleMessage(msg)
+			mc.processMessage(msg)
 		case <-done:
 			mc.logger.Infof("Received Done signal. Partition %d: Shutting down consumer", partition)
 			return
@@ -49,7 +49,7 @@ func (mc *MessageConsumer) AwaitMessages(partitionConsumer sarama.PartitionConsu
 	}
 }
 
-func (mc *MessageConsumer) handleMessage(msg *sarama.ConsumerMessage) {
+func (mc *MessageConsumer) processMessage(msg *sarama.ConsumerMessage) {
 	// Extract trace context from Kafka headers
 	carrier := propagation.MapCarrier{}
 	for _, h := range msg.Headers {
@@ -58,7 +58,7 @@ func (mc *MessageConsumer) handleMessage(msg *sarama.ConsumerMessage) {
 	ctx := context.Background()
 	ctx = mc.propagator.Extract(ctx, carrier)
 
-	ctx, span := mc.tracer.Start(ctx, "handleMessage")
+	ctx, span := mc.tracer.Start(ctx, "processMessage")
 	defer span.End()
 
 	var emailMsg EmailMsg
@@ -68,7 +68,7 @@ func (mc *MessageConsumer) handleMessage(msg *sarama.ConsumerMessage) {
 		return
 	}
 	mc.logger.Debugf("EmailMsg unmarshalled: %+v", emailMsg)
-	err := mc.email.Send(emailMsg.EmailAddress, emailMsg.OrderID)
+	err := mc.email.Send(ctx, emailMsg.EmailAddress, emailMsg.OrderID)
 	if err != nil {
 		mc.logger.Error("Error sending email: ", err)
 		span.RecordError(err)

@@ -96,7 +96,7 @@ func main() {
 		}()
 
 		wg.Add(1)
-		go messageConsumer.AwaitMessages(partitionConsumer, partition, done, &wg)
+		go messageConsumer.ConsumeMessages(partitionConsumer, partition, done, &wg)
 	}
 
 	wg.Wait()
