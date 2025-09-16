@@ -32,6 +32,7 @@ func initLogger() {
 	logger.SetLevel(level)
 	logger.SetFormatter(&logrus.TextFormatter{
 		DisableColors: false,
+		PadLevelText:  true,
 	})
 	logger.Infof("Logger initialized with log level: %s", logLevel)
 }
