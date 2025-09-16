@@ -1,29 +1,26 @@
 package email
 
 import (
-	"fmt"
+	"github.com/sirupsen/logrus"
 )
 
-func Send(emailAddress, orderID string) error {
-	// Simulate sending an email
-	// In a real-world scenario, integrate with an email service provider here
-	fmt.Printf("Sending email to %s about order %s\n", emailAddress, orderID)
+type Sender interface {
+	Send(emailAddress, orderID string) error
+}
 
-	// senderEmail := "no-reply@example.com"
-	// password := "examplepassword" // In real scenarios, use environment variables or secure vaults
+type EmailSender struct {
+	Logger *logrus.Logger
+}
 
-	// recipientEmail := target // Assuming userID is the email address
+func NewEmailSender(logger *logrus.Logger) *EmailSender {
+	return &EmailSender{
+		Logger: logger,
+	}
+}
 
-	// message := []byte(fmt.Sprintf("Subject: Payment Processed!\n Process ID: %s\n", orderID))
-
-	// smtpServer := "smtp.gmail.com"
-	// smtpPort := 587
-
-	// creds := smtp.PlainAuth("", senderEmail, password, smtpServer)
-	// smtpAddress := fmt.Sprintf("%s:%d", smtpServer, smtpPort)
-	// err := smtp.SendMail(smtpAddress, creds, senderEmail, []string{recipientEmail}, message)
-	// if err != nil {
-	// 	return fmt.Errorf("failed to send email: %w", err)
-	// }
+func (e *EmailSender) Send(emailAddress, orderID string) error {
+	// Implement actual email sending logic here
+	// For now, just log the action
+	e.Logger.Infof("Sending email to %s about order %s", emailAddress, orderID)
 	return nil
 }
