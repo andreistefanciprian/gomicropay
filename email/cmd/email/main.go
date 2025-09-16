@@ -51,7 +51,7 @@ func main() {
 
 	// Initialize email sender
 
-	emailSender := email.NewEmailSender(logger)
+	emailSender := email.NewEmailSender(logger, tracer)
 
 	// Initialize message consumer
 	messageConsumer := c.NewMessageConsumer(tracer, emailSender, logger)
