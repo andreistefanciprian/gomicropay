@@ -8,7 +8,7 @@ import (
 	"os"
 
 	"github.com/IBM/sarama"
-	"github.com/XSAM/otelsql"
+	"github.com/andreistefanciprian/gomicropay/money_movement/internal/db"
 	mm "github.com/andreistefanciprian/gomicropay/money_movement/internal/implementation"
 	"github.com/andreistefanciprian/gomicropay/money_movement/internal/tracing"
 	pb "github.com/andreistefanciprian/gomicropay/money_movement/proto"
@@ -62,24 +62,11 @@ func main() {
 	dbHost := os.Getenv("MYSQL_HOST")
 	dbPort := os.Getenv("MYSQL_PORT")
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPassword, dbHost, dbPort, dbName)
-	db, err := otelsql.Open(dbDriver, dsn, otelsql.WithTracerProvider(tp))
+	db, err := db.NewMysqlDb(dbDriver, dsn, tp, logger)
 	if err != nil {
-		logger.Fatal(err)
+		logger.Fatalf("failed to initialize database: %v", err)
 	}
-	defer func() {
-		if err = db.Close(); err != nil {
-			logger.Errorf("Error closing database connection: %v", err)
-		}
-		logger.Info("Database connection closed")
-	}()
-
-	// Ping db
-	if err = db.Ping(); err != nil {
-
-		logger.Fatalf("Failed to connect to the database: %v", err)
-	} else {
-		logger.Info("Database connection established")
-	}
+	defer db.Close()
 
 	// Kafka producer setup
 	saramaLogger := log.New(os.Stdout, "[money-movement producer]", log.LstdFlags)
