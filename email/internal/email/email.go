@@ -1,11 +1,13 @@
 package email
 
 import (
+	"context"
+
 	"github.com/sirupsen/logrus"
 )
 
 type Sender interface {
-	Send(emailAddress, orderID string) error
+	Send(ctx context.Context, emailAddress, orderID string) error
 }
 
 type EmailSender struct {
@@ -18,9 +20,9 @@ func NewEmailSender(logger *logrus.Logger) *EmailSender {
 	}
 }
 
-func (e *EmailSender) Send(emailAddress, orderID string) error {
+func (e *EmailSender) Send(ctx context.Context, emailAddress, orderID string) error {
 	// Implement actual email sending logic here
-	// For now, just log the action
+	// For now, just log the action. Use ctx for tracing in the future.
 	e.Logger.Infof("Sending email to %s about order %s", emailAddress, orderID)
 	return nil
 }

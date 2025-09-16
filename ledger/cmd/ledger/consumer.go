@@ -87,7 +87,7 @@ func main() {
 		}
 	}()
 
-	ledgerConsumer := ledger.NewLedgerConsumer(tracer, mySqlConn, consumer, logger)
+	ledgerConsumer := ledger.NewMessageConsumer(tracer, mySqlConn, consumer, logger)
 
 	partitions, err := ledgerConsumer.Consumer.Partitions(topic)
 	if err != nil {
@@ -107,7 +107,7 @@ func main() {
 		}()
 
 		wg.Add(1)
-		go ledgerConsumer.AwaitMessages(partitionConsumer, partition, &wg, done)
+		go ledgerConsumer.ConsumeMessages(partitionConsumer, partition, &wg, done)
 	}
 	wg.Wait()
 }
