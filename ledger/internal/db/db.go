@@ -6,7 +6,7 @@ import (
 
 	"github.com/XSAM/otelsql"
 	"github.com/sirupsen/logrus"
-	"go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const insertQuery = "INSERT INTO ledger (order_id, customer_email_address, amount, operation, transaction_date) VALUES (?, ?, ?, ?, ?)"
@@ -18,11 +18,12 @@ type LedgerRepository interface {
 type MySqlDb struct {
 	DB     *sql.DB
 	logger *logrus.Logger
+	tracer trace.Tracer
 }
 
 // NewMysqlDb creates a new MySqlDb instance with an instrumented DB connection
-func NewMysqlDb(dbName string, dsn string, trace *trace.TracerProvider, logger *logrus.Logger) (*MySqlDb, error) {
-	db, err := otelsql.Open(dbName, dsn, otelsql.WithTracerProvider(trace))
+func NewMysqlDb(dbName string, dsn string, tracerProvider trace.TracerProvider, logger *logrus.Logger) (*MySqlDb, error) {
+	db, err := otelsql.Open(dbName, dsn, otelsql.WithTracerProvider(tracerProvider))
 	if err != nil {
 		return &MySqlDb{}, err
 	}
@@ -32,7 +33,8 @@ func NewMysqlDb(dbName string, dsn string, trace *trace.TracerProvider, logger *
 	} else {
 		logger.Info("Database connection established")
 	}
-	return &MySqlDb{DB: db, logger: logger}, nil
+	tracer := tracerProvider.Tracer("ledger-database")
+	return &MySqlDb{DB: db, logger: logger, tracer: tracer}, nil
 }
 
 // Close the database connection
@@ -47,6 +49,9 @@ func (m *MySqlDb) Close() error {
 
 // Insert a new ledger entry into the database
 func (m *MySqlDb) Insert(ctx context.Context, orderID, customerEmailAddress string, amount int64, operation, transactionDate string) error {
+	ctx, span := m.tracer.Start(ctx, "Insert")
+	defer span.End()
+
 	stmt, err := m.DB.PrepareContext(ctx, insertQuery)
 	if err != nil {
 		return err
