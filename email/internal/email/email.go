@@ -4,25 +4,31 @@ import (
 	"context"
 
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type Sender interface {
-	Send(ctx context.Context, emailAddress, orderID string) error
+	SendEmail(ctx context.Context, emailAddress, orderID string) error
 }
 
 type EmailSender struct {
 	Logger *logrus.Logger
+	tracer trace.Tracer
 }
 
-func NewEmailSender(logger *logrus.Logger) *EmailSender {
+func NewEmailSender(logger *logrus.Logger, tracer trace.Tracer) *EmailSender {
 	return &EmailSender{
 		Logger: logger,
+		tracer: tracer,
 	}
 }
 
-func (e *EmailSender) Send(ctx context.Context, emailAddress, orderID string) error {
+func (e *EmailSender) SendEmail(ctx context.Context, emailAddress, orderID string) error {
+	_, span := e.tracer.Start(ctx, "SendEmail")
+	defer span.End()
+
 	// Implement actual email sending logic here
-	// For now, just log the action. Use ctx for tracing in the future.
+	// For now, just log the action.
 	e.Logger.Infof("Sending email to %s about order %s", emailAddress, orderID)
 	return nil
 }

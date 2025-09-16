@@ -68,7 +68,7 @@ func (mc *MessageConsumer) processMessage(msg *sarama.ConsumerMessage) {
 		return
 	}
 	mc.logger.Debugf("EmailMsg unmarshalled: %+v", emailMsg)
-	err := mc.email.Send(ctx, emailMsg.EmailAddress, emailMsg.OrderID)
+	err := mc.email.SendEmail(ctx, emailMsg.EmailAddress, emailMsg.OrderID)
 	if err != nil {
 		mc.logger.Error("Error sending email: ", err)
 		span.RecordError(err)
