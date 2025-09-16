@@ -525,6 +525,9 @@ func (a *Application) CreateAccount(w http.ResponseWriter, r *http.Request) {
 
 // checkAuthHeader validates the Authorization header and token.
 func (a *Application) checkAuthHeader(context context.Context, r *http.Request) error {
+	ctx, span := a.tracer.Start(context, "checkAuthHeader")
+	defer span.End()
+
 	authHeader := r.Header.Get("Authorization")
 	a.logger.Debugf("Authorization header: %s", authHeader)
 	if authHeader == "" {
@@ -544,7 +547,7 @@ func (a *Application) checkAuthHeader(context context.Context, r *http.Request) 
 	}
 
 	// Validate the token
-	_, err := a.validateToken(context, token)
+	_, err := a.validateToken(ctx, token)
 	if err != nil {
 		a.logger.Errorf("Token validation failed: %v", err)
 		return status.Error(codes.Unauthenticated, "invalid token")
