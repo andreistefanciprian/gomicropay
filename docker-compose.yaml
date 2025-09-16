@@ -49,6 +49,7 @@ services:
       timeout: 5s
       retries: 5
     volumes:
+      - mysql-auth-data:/var/lib/mysql
       - ./auth/infra/k8s/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
   money-movement:
     image: andreistefanciprian/gomicropay-money-movement:latest
@@ -156,6 +157,7 @@ services:
       timeout: 5s
       retries: 5
     volumes:
+      - mysql-money-movement-data:/var/lib/mysql
       - ./money_movement/infra/k8s/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
 
   mysql-ledger:
@@ -170,6 +172,7 @@ services:
       timeout: 5s
       retries: 5
     volumes:
+      - mysql-ledger-data:/var/lib/mysql
       - ./ledger/infra/k8s/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
 
   jaeger:
@@ -183,3 +186,9 @@ services:
       - "4318:4318"     # OTLP HTTP (for otel-collector and otlptracehttp)
     environment:
       - COLLECTOR_OTLP_ENABLED=true
+
+# Named volumes for MySQL data
+volumes:
+  mysql-auth-data:
+  mysql-money-movement-data:
+  mysql-ledger-data:
