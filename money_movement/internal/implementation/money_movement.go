@@ -41,8 +41,8 @@ func (i *Implementation) Authorize(ctx context.Context, authorizePayload *pb.Aut
 
 	span.SetAttributes(
 		attribute.String("customer_email", authorizePayload.GetCustomerEmailAddress()),
-		attribute.String("customer_email", authorizePayload.GetMerchantEmailAddress()),
-		attribute.String("customer_email", strconv.Itoa(int(authorizePayload.GetCents()))),
+		attribute.String("merchant_email", authorizePayload.GetMerchantEmailAddress()),
+		attribute.String("amount", strconv.Itoa(int(authorizePayload.GetCents()))),
 	)
 
 	i.logger.Infof("Authorize called with payload: %+v", authorizePayload)
@@ -242,7 +242,7 @@ func (i *Implementation) Capture(ctx context.Context, capturePayload *pb.Capture
 	// Send Kafka message
 	i.logger.Infof("Sending Kafka messages for transaction: pid=%s", authorizeTransaction.Pid)
 	p := producer.NewMessageProducer(i.producer, i.tracer, i.logger)
-	p.ProduceMessage(ctx, authorizeTransaction.Pid, authorizeTransaction.SrcEmailAddress, authorizeTransaction.Amount)
+	p.ProduceMessage(ctx, authorizeTransaction.Pid, authorizeTransaction.SrcEmailAddress, merchantWallet.EmailAddress, authorizeTransaction.Amount)
 
 	return &emptypb.Empty{}, nil
 }

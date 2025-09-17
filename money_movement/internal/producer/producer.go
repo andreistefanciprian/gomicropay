@@ -34,8 +34,11 @@ func NewMessageProducer(producer sarama.SyncProducer, tracer trace.Tracer, logge
 }
 
 type EmailMsg struct {
-	OrderID      string `json:"order_id"`
-	EmailAddress string `json:"email_address"`
+	OrderID              string `json:"order_id"`
+	CustomerEmailAddress string `json:"customer_email_address"`
+	Amount               int64  `json:"amount"`
+	MerchantEmailAddress string `json:"merchant_email_address"`
+	Date                 string `json:"date"`
 }
 
 type LedgerMsg struct {
@@ -46,15 +49,19 @@ type LedgerMsg struct {
 	Date                 string `json:"date"`
 }
 
-func (k *MessageProducer) ProduceMessage(ctx context.Context, pid, customerEmailAddress string, amount int64) {
+func (k *MessageProducer) ProduceMessage(ctx context.Context, pid, customerEmailAddress, merchantEmailAddress string, amount int64) {
 	// Start a new span for tracing
 	ctx, span := k.tracer.Start(ctx, "ProduceMessage")
 	defer span.End()
 
+	timeNow := time.Now().Format("2006-01-02")
 	// Create email message
 	emailMsg := EmailMsg{
-		OrderID:      pid,
-		EmailAddress: customerEmailAddress,
+		OrderID:              pid,
+		CustomerEmailAddress: customerEmailAddress,
+		Amount:               amount,
+		MerchantEmailAddress: merchantEmailAddress,
+		Date:                 timeNow,
 	}
 
 	ledgerMsg := LedgerMsg{
@@ -62,7 +69,7 @@ func (k *MessageProducer) ProduceMessage(ctx context.Context, pid, customerEmail
 		CustomerEmailAddress: customerEmailAddress,
 		Amount:               amount,
 		Operation:            "DEBIT",
-		Date:                 time.Now().Format("2006-01-02"),
+		Date:                 timeNow,
 	}
 
 	var wg sync.WaitGroup

@@ -1,2 +1,3 @@
 # infra folder
 infra/
+.env.email
