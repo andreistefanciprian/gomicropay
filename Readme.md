@@ -148,5 +148,18 @@ bash test_transaction.sh
 make undeploy-all
 ```
 
+## Email Service Credentials
+
+The Email service requires credentials to send emails. You must provide these in a `.env.email` file at the project root. This file should contain:
+
+```
+EMAIL_SENDER=your_email@gmail.com
+EMAIL_PASSWORD=your_app_password
+```
+
+The Docker Compose configuration automatically loads this file for the email service. Make sure to use an App Password if using Gmail.
+
+---
+
 
 

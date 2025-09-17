@@ -103,6 +103,8 @@ services:
     build:
       context: ./email
       dockerfile: infra/Dockerfile
+    env_file:
+      - .env.email
     environment:
       KAFKA_HOST: "broker"
       KAFKA_PORT: "29092"

@@ -14,8 +14,11 @@ import (
 )
 
 type EmailMsg struct {
-	OrderID      string `json:"order_id"`
-	EmailAddress string `json:"email_address"`
+	OrderID              string `json:"order_id"`
+	CustomerEmailAddress string `json:"customer_email_address"`
+	Amount               int64  `json:"amount"`
+	MerchantEmailAddress string `json:"merchant_email_address"`
+	Date                 string `json:"date"`
 }
 
 type MessageConsumer struct {
@@ -68,11 +71,11 @@ func (mc *MessageConsumer) processMessage(msg *sarama.ConsumerMessage) {
 		return
 	}
 	mc.logger.Debugf("EmailMsg unmarshalled: %+v", emailMsg)
-	err := mc.email.SendEmail(ctx, emailMsg.EmailAddress, emailMsg.OrderID)
+	err := mc.email.SendEmail(ctx, emailMsg.CustomerEmailAddress, emailMsg.MerchantEmailAddress, emailMsg.OrderID, emailMsg.Amount)
 	if err != nil {
 		mc.logger.Error("Error sending email: ", err)
 		span.RecordError(err)
 		return
 	}
-	mc.logger.Infof("Email sent to user %s for order %s", emailMsg.EmailAddress, emailMsg.OrderID)
+	mc.logger.Infof("Email sent to user %s for order %s", emailMsg.CustomerEmailAddress, emailMsg.OrderID)
 }
