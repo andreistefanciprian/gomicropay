@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 
@@ -75,7 +76,7 @@ type MySqlDb struct {
 	tracer trace.Tracer
 }
 
-type config struct {
+type cfg struct {
 	username string
 	password string
 	host     string
@@ -84,35 +85,41 @@ type config struct {
 }
 
 // getConfig retrieves database configuration from environment variables
-func getConfig() config {
+func loadCfgFromEnv() (*cfg, error) {
 	username := os.Getenv("MYSQL_USER")
 	password := os.Getenv("MYSQL_PASSWORD")
 	database := os.Getenv("MYSQL_DB")
 	host := os.Getenv("MYSQL_HOST")
 	port := os.Getenv("MYSQL_PORT")
-
-	return config{
+	c := &cfg{
 		username: username,
 		password: password,
 		host:     host,
 		port:     port,
 		database: database,
 	}
+	if c.username == "" || c.password == "" || c.host == "" || c.port == "" || c.database == "" {
+		return nil, errors.New("database configuration environment variables are not fully set")
+	}
+	return c, nil
 }
 
 // NewMysqlDb creates a new MySqlDb instance with an instrumented DB connection
 func NewMysqlDb(tracerProvider trace.TracerProvider, logger *logrus.Logger) (*MySqlDb, error) {
 	// Get database configuration
-	config := getConfig()
+	config, err := loadCfgFromEnv()
+	if err != nil {
+		return nil, err
+	}
 	dbURL := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", config.username, config.password, config.host, config.port, config.database)
 	// Open the database connection
 	db, err := otelsql.Open(dbDriver, dbURL, otelsql.WithTracerProvider(tracerProvider))
 	if err != nil {
-		return &MySqlDb{}, err
+		return nil, err
 	}
 	// Ping db
 	if err = db.Ping(); err != nil {
-		return &MySqlDb{}, err
+		return nil, err
 	} else {
 		logger.Info("Database connection established")
 	}

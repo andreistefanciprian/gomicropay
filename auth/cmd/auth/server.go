@@ -50,13 +50,7 @@ func main() {
 	tracer := tp.Tracer("auth-tracer")
 
 	// Initialize DB connection
-	dbUser := os.Getenv("MYSQL_USER")
-	dbPassword := os.Getenv("MYSQL_PASSWORD")
-	dbName := os.Getenv("MYSQL_DB")
-	dbHost := os.Getenv("MYSQL_HOST")
-	dbPort := os.Getenv("MYSQL_PORT")
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPassword, dbHost, dbPort, dbName)
-	mySql, err := db.NewMysqlDb("mysql", dsn, tp, logger)
+	mySql, err := db.NewMysqlDb(tp, logger)
 	if err != nil {
 		logger.Fatal(err)
 	}

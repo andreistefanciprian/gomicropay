@@ -3,13 +3,19 @@ package db
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"fmt"
+	"os"
 
 	"github.com/XSAM/otelsql"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/trace"
 )
 
-const insertQuery = "INSERT INTO ledger (order_id, customer_email_address, amount, operation, transaction_date) VALUES (?, ?, ?, ?, ?)"
+const (
+	insertQuery = "INSERT INTO ledger (order_id, customer_email_address, amount, operation, transaction_date) VALUES (?, ?, ?, ?, ?)"
+	dbDriver    = "mysql"
+)
 
 type LedgerRepository interface {
 	Insert(ctx context.Context, orderID, customerEmailAddress string, amount int64, operation, transactionDate string) error
@@ -21,19 +27,54 @@ type MySqlDb struct {
 	tracer trace.Tracer
 }
 
+type cfg struct {
+	username string
+	password string
+	host     string
+	port     string
+	database string
+}
+
+// getConfig retrieves database configuration from environment variables
+func loadCfgFromEnv() (*cfg, error) {
+	username := os.Getenv("MYSQL_USER")
+	password := os.Getenv("MYSQL_PASSWORD")
+	database := os.Getenv("MYSQL_DB")
+	host := os.Getenv("MYSQL_HOST")
+	port := os.Getenv("MYSQL_PORT")
+	c := &cfg{
+		username: username,
+		password: password,
+		host:     host,
+		port:     port,
+		database: database,
+	}
+	if c.username == "" || c.password == "" || c.host == "" || c.port == "" || c.database == "" {
+		return nil, errors.New("database configuration environment variables are not fully set")
+	}
+	return c, nil
+}
+
 // NewMysqlDb creates a new MySqlDb instance with an instrumented DB connection
-func NewMysqlDb(dbName string, dsn string, tracerProvider trace.TracerProvider, logger *logrus.Logger) (*MySqlDb, error) {
-	db, err := otelsql.Open(dbName, dsn, otelsql.WithTracerProvider(tracerProvider))
+func NewMysqlDb(tracerProvider trace.TracerProvider, logger *logrus.Logger) (*MySqlDb, error) {
+	// Get database configuration
+	config, err := loadCfgFromEnv()
 	if err != nil {
-		return &MySqlDb{}, err
+		return nil, err
+	}
+	dbURL := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", config.username, config.password, config.host, config.port, config.database)
+	// Open the database connection
+	db, err := otelsql.Open(dbDriver, dbURL, otelsql.WithTracerProvider(tracerProvider))
+	if err != nil {
+		return nil, err
 	}
 	// Ping db
 	if err = db.Ping(); err != nil {
-		return &MySqlDb{}, err
+		return nil, err
 	} else {
 		logger.Info("Database connection established")
 	}
-	tracer := tracerProvider.Tracer("ledger-database")
+	tracer := tracerProvider.Tracer("db")
 	return &MySqlDb{DB: db, logger: logger, tracer: tracer}, nil
 }
 
