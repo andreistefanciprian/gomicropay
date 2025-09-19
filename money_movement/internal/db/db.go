@@ -3,6 +3,8 @@ package db
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"os"
 
 	"github.com/XSAM/otelsql"
 	proto "github.com/andreistefanciprian/gomicropay/money_movement/proto"
@@ -22,6 +24,7 @@ const (
 	selectWalletByIDQuery    = "SELECT id, email_address, wallet_type FROM wallet WHERE id = ?"
 	selectAccountQuery       = "SELECT id, cents, account_type, wallet_id FROM account WHERE wallet_id = ? AND account_type = ?"
 	updateAccountCentsQuery  = "UPDATE account SET cents = ? WHERE id = ?"
+	dbDriver                 = "mysql"
 )
 
 type Wallet struct {
@@ -72,9 +75,38 @@ type MySqlDb struct {
 	tracer trace.Tracer
 }
 
+type config struct {
+	username string
+	password string
+	host     string
+	port     string
+	database string
+}
+
+// getConfig retrieves database configuration from environment variables
+func getConfig() config {
+	username := os.Getenv("MYSQL_USER")
+	password := os.Getenv("MYSQL_PASSWORD")
+	database := os.Getenv("MYSQL_DB")
+	host := os.Getenv("MYSQL_HOST")
+	port := os.Getenv("MYSQL_PORT")
+
+	return config{
+		username: username,
+		password: password,
+		host:     host,
+		port:     port,
+		database: database,
+	}
+}
+
 // NewMysqlDb creates a new MySqlDb instance with an instrumented DB connection
-func NewMysqlDb(dbName string, dsn string, tracerProvider trace.TracerProvider, logger *logrus.Logger) (*MySqlDb, error) {
-	db, err := otelsql.Open(dbName, dsn, otelsql.WithTracerProvider(tracerProvider))
+func NewMysqlDb(tracerProvider trace.TracerProvider, logger *logrus.Logger) (*MySqlDb, error) {
+	// Get database configuration
+	config := getConfig()
+	dbURL := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", config.username, config.password, config.host, config.port, config.database)
+	// Open the database connection
+	db, err := otelsql.Open(dbDriver, dbURL, otelsql.WithTracerProvider(tracerProvider))
 	if err != nil {
 		return &MySqlDb{}, err
 	}

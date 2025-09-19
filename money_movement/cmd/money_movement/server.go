@@ -19,10 +19,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-const (
-	dbDriver = "mysql"
-)
-
 var logger = logrus.New()
 
 func initLogger() {
@@ -56,13 +52,7 @@ func main() {
 	tracer := tp.Tracer("money-movement-tracer")
 
 	// Initialize DB connection
-	dbUser := os.Getenv("MYSQL_USER")
-	dbPassword := os.Getenv("MYSQL_PASSWORD")
-	dbName := os.Getenv("MYSQL_DB")
-	dbHost := os.Getenv("MYSQL_HOST")
-	dbPort := os.Getenv("MYSQL_PORT")
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPassword, dbHost, dbPort, dbName)
-	db, err := db.NewMysqlDb(dbDriver, dsn, tp, logger)
+	db, err := db.NewMysqlDb(tp, logger)
 	if err != nil {
 		logger.Fatalf("failed to initialize database: %v", err)
 	}
