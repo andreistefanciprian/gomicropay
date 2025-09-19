@@ -35,6 +35,10 @@ type cfg struct {
 	database string
 }
 
+func (c *cfg) dsn() string {
+	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", c.username, c.password, c.host, c.port, c.database)
+}
+
 // getConfig retrieves database configuration from environment variables
 func loadCfgFromEnv() (*cfg, error) {
 	username := os.Getenv("MYSQL_USER")
@@ -62,8 +66,9 @@ func NewMysqlDb(tracerProvider trace.TracerProvider, logger *logrus.Logger) (*My
 	if err != nil {
 		return nil, err
 	}
-	dbURL := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", config.username, config.password, config.host, config.port, config.database)
+
 	// Open the database connection
+	dbURL := config.dsn()
 	db, err := otelsql.Open(dbDriver, dbURL, otelsql.WithTracerProvider(tracerProvider))
 	if err != nil {
 		return nil, err
