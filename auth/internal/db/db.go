@@ -9,6 +9,7 @@ import (
 
 	"github.com/XSAM/otelsql"
 	pb "github.com/andreistefanciprian/gomicropay/auth/proto"
+	"github.com/go-sql-driver/mysql"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/sdk/trace"
 )
@@ -32,36 +33,28 @@ type MySqlDb struct {
 	logger *logrus.Logger
 }
 
-type cfg struct {
-	username string
-	password string
-	host     string
-	port     string
-	database string
-}
+// removed old cfg struct and dsn method
 
-func (c *cfg) dsn() string {
-	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", c.username, c.password, c.host, c.port, c.database)
-}
-
-// getConfig retrieves database configuration from environment variables
-func loadCfgFromEnv() (*cfg, error) {
-	username := os.Getenv("MYSQL_USER")
-	password := os.Getenv("MYSQL_PASSWORD")
-	database := os.Getenv("MYSQL_DB")
+// getConfig retrieves database configuration from environment variables and returns a mysql.Config
+func loadCfgFromEnv() (*mysql.Config, error) {
+	user := os.Getenv("MYSQL_USER")
+	pass := os.Getenv("MYSQL_PASSWORD")
+	db := os.Getenv("MYSQL_DB")
 	host := os.Getenv("MYSQL_HOST")
 	port := os.Getenv("MYSQL_PORT")
-	c := &cfg{
-		username: username,
-		password: password,
-		host:     host,
-		port:     port,
-		database: database,
-	}
-	if c.username == "" || c.password == "" || c.host == "" || c.port == "" || c.database == "" {
+	if user == "" || pass == "" || host == "" || port == "" || db == "" {
 		return nil, errors.New("database configuration environment variables are not fully set")
 	}
-	return c, nil
+	cfg := &mysql.Config{
+		User:                 user,
+		Passwd:               pass,
+		Net:                  "tcp",
+		Addr:                 fmt.Sprintf("%s:%s", host, port),
+		DBName:               db,
+		AllowNativePasswords: true,
+		ParseTime:            true,
+	}
+	return cfg, nil
 }
 
 // NewMysqlDb creates a new MySqlDb instance with an instrumented DB connection
@@ -72,9 +65,9 @@ func NewMysqlDb(tracerProvider *trace.TracerProvider, logger *logrus.Logger) (*M
 		return nil, err
 	}
 
-	// Open the database connection
-	dbURL := config.dsn()
-	db, err := otelsql.Open(dbDriver, dbURL, otelsql.WithTracerProvider(tracerProvider))
+	// Use FormatDSN to generate the DSN string
+	dsn := config.FormatDSN()
+	db, err := otelsql.Open(dbDriver, dsn, otelsql.WithTracerProvider(tracerProvider))
 	if err != nil {
 		return nil, err
 	}
