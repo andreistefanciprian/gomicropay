@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: auth
-          image: andreistefanciprian/gomicropay-auth:latest@sha256:3e8f28536ddc01cb718559958b0016938871b4262980cf0357de33cae922c5b8
+          image: andreistefanciprian/gomicropay-auth:latest@sha256:5d7e725a5eeb3934a0d937dbb8a82df093a0e5dec66646b59f7761491c2eebef
           imagePullPolicy: Always
           envFrom:
             - secretRef:
