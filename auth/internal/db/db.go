@@ -3,6 +3,9 @@ package db
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"fmt"
+	"os"
 
 	"github.com/XSAM/otelsql"
 	pb "github.com/andreistefanciprian/gomicropay/auth/proto"
@@ -14,6 +17,7 @@ const (
 	selectPasswordHashQuery = "SELECT password_hash FROM registered_users WHERE email = ?"
 	checkUserExistsQuery    = "SELECT COUNT(*) FROM registered_users WHERE email = ?"
 	insertUserQuery         = "INSERT INTO registered_users (first_name, last_name, email, password_hash) VALUES (?, ?, ?, ?)"
+	dbDriver                = "mysql"
 )
 
 type AuthRepository interface {
@@ -28,15 +32,50 @@ type MySqlDb struct {
 	logger *logrus.Logger
 }
 
+type cfg struct {
+	username string
+	password string
+	host     string
+	port     string
+	database string
+}
+
+// getConfig retrieves database configuration from environment variables
+func loadCfgFromEnv() (*cfg, error) {
+	username := os.Getenv("MYSQL_USER")
+	password := os.Getenv("MYSQL_PASSWORD")
+	database := os.Getenv("MYSQL_DB")
+	host := os.Getenv("MYSQL_HOST")
+	port := os.Getenv("MYSQL_PORT")
+	c := &cfg{
+		username: username,
+		password: password,
+		host:     host,
+		port:     port,
+		database: database,
+	}
+	if c.username == "" || c.password == "" || c.host == "" || c.port == "" || c.database == "" {
+		return nil, errors.New("database configuration environment variables are not fully set")
+	}
+	return c, nil
+}
+
 // NewMysqlDb creates a new MySqlDb instance with an instrumented DB connection
-func NewMysqlDb(dbName string, dsn string, trace *trace.TracerProvider, logger *logrus.Logger) (*MySqlDb, error) {
-	db, err := otelsql.Open(dbName, dsn, otelsql.WithTracerProvider(trace))
+func NewMysqlDb(tracerProvider *trace.TracerProvider, logger *logrus.Logger) (*MySqlDb, error) {
+	// Get database configuration
+	config, err := loadCfgFromEnv()
 	if err != nil {
-		return &MySqlDb{}, err
+		return nil, err
+	}
+	dbURL := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", config.username, config.password, config.host, config.port, config.database)
+	// Open the database connection
+	db, err := otelsql.Open(dbDriver, dbURL, otelsql.WithTracerProvider(tracerProvider))
+	if err != nil {
+		return nil, err
 	}
 	// Ping db
 	if err = db.Ping(); err != nil {
-		return &MySqlDb{}, err
+		return nil, err
 	} else {
 		logger.Info("Database connection established")
 	}
