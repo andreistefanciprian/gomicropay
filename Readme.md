@@ -22,7 +22,7 @@ This project uses **OpenTelemetry** for distributed tracing across the all micro
 - Tracing is enabled in:
   - **API Gateway** (HTTP/gRPC client)
   - **Auth Service** (gRPC server, DB queries)
-  - **Money Movement Service** (gRPC server, DB queries, Kafka Producer)
+  - **Payments Service** (gRPC server, DB queries, Kafka Producer)
   - **Ledger Service** (Kafka Consumer, DB queries)
   - **Email Service** (Kafka Consumer)
 - Context propagation ensures unified traces across all services.
@@ -78,11 +78,11 @@ curl -X POST -H "Authorization: Bearer <JWT_TOKEN>" -d '{"customer_email_address
 - If the authentication is successful, the Auth service responds with a JWT token.
 - From then on, the user includes this token in the request header whenever making a transaction call to the API Gateway. 
 - The Gateway checks the token’s validity with the Auth service before moving forward.
-- Once authorized, the API Gateway passes the transaction request to the Money Movement service over gRPC. 
+- Once authorized, the API Gateway passes the transaction request to the Payments service over gRPC. 
 - This service debits the user’s DEFAULT account and credits the PAYMENT account, recording the transaction in its database.
-- At the same time, the Money Movement service produces two event messages to Kafka, which are then consumed by other services. 
+- At the same time, the Payments service produces two event messages to Kafka, which are then consumed by other services. 
 - The Ledger service picks up the event and updates its records, while the Email service sends the user a notification about the transaction.
-- Finally, the Money Movement service returns a confirmation back to the user indicating that the transaction was successful.
+- Finally, the Payments service returns a confirmation back to the user indicating that the transaction was successful.
 
 
 ## Local Development with Docker Compose
@@ -99,12 +99,12 @@ docker compose up --build --remove-orphans
 bash test_transaction.sh
 
 # Connect to MySQL databases from another container in the same Docker network
-docker run -it --network gomicropay_default --rm mysql mysql -hmysql-money-movement -u root -p
+docker run -it --network gomicropay_default --rm mysql mysql -hmysql-payments -u root -p
 
 # Connect to MySQL databases from your laptop's CLI
 docker run -it --network host --rm mysql mysql -h127.0.0.1 -P 33061 -u root -pAdmin123 -e 'select * from auth.registered_users;'
 docker run -it --network host --rm mysql mysql -h127.0.0.1 -P 33062 -u root -pAdmin123 -e \
-'select * from money_movement.wallet; select * from money_movement.account; select * from money_movement.transaction;'
+'select * from payments.wallet; select * from payments.account; select * from payments.transaction;'
 docker run -it --network host --rm mysql mysql -h127.0.0.1 -P 33063 -u root -pAdmin123 -e 'select * from ledger.ledger;'
 
 # Remove all services
@@ -126,17 +126,17 @@ make deploy-all
 # Port-forward API Gateway to localhost:8080
 kubectl port-forward service/gateway 8080:8080 -n api-gateway
 
-# Debug MySQL money movement database
-kubectl exec -ti mysql-client -n money-movement -- mysql -h mysql-money-movement -u money_movement_user -p
-mysql>use money_movement;
+# Debug MySQL payments database
+kubectl exec -ti mysql-client -n payments -- mysql -h mysql-payments -u payments_user -p
+mysql>use payments;
 mysql>show tables;
 mysql>select * from transaction;
 
-kubectl exec -ti mysql-client -n money-movement -- mysql -h mysql-ledger.ledger -u ledger_user -p
+kubectl exec -ti mysql-client -n payments -- mysql -h mysql-ledger.ledger -u ledger_user -p
 
 # check logs
 kubectl logs -l app=gateway -n api-gateway -f
-kubectl logs -l app=money-movement -n money-movement -f
+kubectl logs -l app=payments -n payments -f
 kubectl logs -l app=ledger -n ledger -f
 kubectl logs -l app=auth -n auth -f
 kubectl logs -l app=email -n email -f

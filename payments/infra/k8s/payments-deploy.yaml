@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payments
+  labels:
+    app: payments
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: payments
+  template:
+    metadata:
+      labels:
+        app: payments
+    spec:
+      containers:
+        - name: payments
+          image: andreistefanciprian/gomicropay-payments:latest
+          imagePullPolicy: Always
+          envFrom:
+            - secretRef:
+                name: payments-secret
+            - configMapRef:
+                name: payments-configmap
+          ports:
+            - containerPort: 7000

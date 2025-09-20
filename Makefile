@@ -27,24 +27,24 @@ deploy-auth:
 undeploy-auth:
 	@kustomize build auth/infra/k8s | kubectl delete -f -
 
-# money_movement
-proto-money-movement:
+# payments
+proto-payments:
 	@protoc \
 	--go_out=paths=source_relative:. \
 	--go-grpc_out=paths=source_relative:. \
-	./money_movement/proto/money_movement_svc.proto
+	./payments/proto/payments_svc.proto
 
 	@protoc \
 	--go_out=paths=source_relative:./api_gateway/ \
 	--go-grpc_out=paths=source_relative:./api_gateway/ \
-	./money_movement/proto/money_movement_svc.proto
-docker-money-movement:
-	@docker build -t andreistefanciprian/gomicropay-money-movement:latest -f money_movement/infra/Dockerfile money_movement/
-	@docker push andreistefanciprian/gomicropay-money-movement:latest
-deploy-money-movement:
-	@kustomize build money_movement/infra/k8s | kubectl apply -f -
-undeploy-money-movement:
-	@kustomize build money_movement/infra/k8s | kubectl delete -f -
+	./payments/proto/payments_svc.proto
+docker-payments:
+	@docker build -t andreistefanciprian/gomicropay-payments:latest -f payments/infra/Dockerfile payments/
+	@docker push andreistefanciprian/gomicropay-payments:latest
+deploy-payments:
+	@kustomize build payments/infra/k8s | kubectl apply -f -
+undeploy-payments:
+	@kustomize build payments/infra/k8s | kubectl delete -f -
 
 # email
 docker-email:
@@ -65,6 +65,6 @@ undeploy-ledger:
 	@kustomize build ledger/infra/k8s | kubectl delete -f -
 
 # all
-deploy-all: deploy-auth deploy-email deploy-money-movement deploy-gateway deploy-ledger
-undeploy-all: undeploy-auth undeploy-email undeploy-money-movement undeploy-gateway undeploy-ledger
+deploy-all: deploy-auth deploy-email deploy-payments deploy-gateway deploy-ledger
+undeploy-all: undeploy-auth undeploy-email undeploy-payments undeploy-gateway undeploy-ledger
 

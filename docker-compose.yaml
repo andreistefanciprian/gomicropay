@@ -7,8 +7,8 @@ services:
     ports:
       - "8080:8080"
     environment:
-      MONEY_MOVEMENT_HOST: "money-movement"
-      MONEY_MOVEMENT_PORT: "7070"
+      PAYMENTS_HOST: "payments"
+      PAYMENTS_PORT: "7070"
       AUTH_HOST: "auth"
       AUTH_PORT: "9000"
       LOG_LEVEL: "DEBUG"
@@ -51,10 +51,10 @@ services:
     volumes:
       - mysql-auth-data:/var/lib/mysql
       - ./auth/infra/k8s/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
-  money-movement:
-    image: andreistefanciprian/gomicropay-money-movement:latest
+  payments:
+    image: andreistefanciprian/gomicropay-payments:latest
     build:
-      context: ./money_movement
+      context: ./payments
       dockerfile: infra/Dockerfile
     ports:
       - "7070:7070"
@@ -63,14 +63,14 @@ services:
       KAFKA_PORT: "29092"
       LOG_LEVEL: "DEBUG" 
       MYSQL_PASSWORD: "Auth123"
-      MYSQL_USER: "money_movement_user"
-      MYSQL_DB: "money_movement"
-      MYSQL_HOST: "mysql-money-movement"
+      MYSQL_USER: "payments_user"
+      MYSQL_DB: "payments"
+      MYSQL_HOST: "mysql-payments"
       MYSQL_PORT: "3306"
-      MONEY_MOVEMENT_PORT: "7070"
+      PAYMENTS_PORT: "7070"
       OTEL_EXPORTER_OTLP_ENDPOINT: "jaeger:4318"
     depends_on:
-      mysql-money-movement:
+      mysql-payments:
         condition: service_healthy
         restart: true
       broker:
@@ -147,20 +147,20 @@ services:
       timeout: 10s
       retries: 10
 
-  mysql-money-movement:
+  mysql-payments:
     image: mysql:9.4@sha256:94254b456a6db9b56c83525a86bff4c7f1e52335f934cbed686fe1ce763116a0
     environment:
       MYSQL_ROOT_PASSWORD: Admin123
     ports:
       - "33062:3306"
     healthcheck:
-      test: ["CMD", "mysql", "-h", "localhost", "-u", "root", "-pAdmin123","-e", "SELECT 1 FROM mysql.user WHERE user='money_movement_user';"]
+      test: ["CMD", "mysql", "-h", "localhost", "-u", "root", "-pAdmin123","-e", "SELECT 1 FROM mysql.user WHERE user='payments_user';"]
       interval: 10s
       timeout: 5s
       retries: 5
     volumes:
-      - mysql-money-movement-data:/var/lib/mysql
-      - ./money_movement/infra/k8s/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - mysql-payments-data:/var/lib/mysql
+      - ./payments/infra/k8s/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
 
   mysql-ledger:
     image: mysql:9.4@sha256:94254b456a6db9b56c83525a86bff4c7f1e52335f934cbed686fe1ce763116a0
@@ -192,5 +192,5 @@ services:
 # Named volumes for MySQL data
 volumes:
   mysql-auth-data:
-  mysql-money-movement-data:
+  mysql-payments-data:
   mysql-ledger-data:

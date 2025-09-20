@@ -11,7 +11,7 @@
       "/^auth\\/infra\\/k8s\\/.+\\.ya?ml$/",
       "/^email\\/infra\\/k8s\\/.+\\.ya?ml$/",
       "/^ledger\\/infra\\/k8s\\/.+\\.ya?ml$/",
-      "/^money_movement\\/infra\\/k8s\\/.+\\.ya?ml$/"
+      "/^payments\\/infra\\/k8s\\/.+\\.ya?ml$/"
     ]
   },
   "packageRules": [
@@ -28,14 +28,14 @@
         "andreistefanciprian/gomicropay-auth",
         "andreistefanciprian/gomicropay-email",
         "andreistefanciprian/gomicropay-ledger",
-        "andreistefanciprian/gomicropay-money-movement"
+        "andreistefanciprian/gomicropay-payments"
       ],
       "matchFileNames": [
         "api_gateway/infra/k8s/**",
         "auth/infra/k8s/**",
         "email/infra/k8s/**",
         "ledger/infra/k8s/**",
-        "money_movement/infra/k8s/**"
+        "payments/infra/k8s/**"
       ],
       "matchUpdateTypes": [
         "digest",

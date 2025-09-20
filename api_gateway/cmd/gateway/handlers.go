@@ -12,7 +12,7 @@ import (
 
 	authpb "github.com/andreistefanciprian/gomicropay/api_gateway/auth/proto"
 	"github.com/andreistefanciprian/gomicropay/api_gateway/internal/validator"
-	mmpb "github.com/andreistefanciprian/gomicropay/api_gateway/money_movement/proto"
+	paymentspb "github.com/andreistefanciprian/gomicropay/api_gateway/payments/proto"
 	"github.com/sirupsen/logrus"
 
 	"go.opentelemetry.io/otel/attribute"
@@ -34,19 +34,19 @@ type HTTPUserHandler interface {
 
 // Application holds dependencies for HTTP handlers.
 type Application struct {
-	mmClient   mmpb.MoneyMovementServiceClient // Money movement gRPC client
-	authClient authpb.AuthServiceClient        // Auth gRPC client
-	tracer     trace.Tracer                    // OpenTelemetry tracer
-	logger     *logrus.Logger                  // Structured logger
+	paymentsClient paymentspb.PaymentsServiceClient // Payments gRPC client
+	authClient     authpb.AuthServiceClient         // Auth gRPC client
+	tracer         trace.Tracer                     // OpenTelemetry tracer
+	logger         *logrus.Logger                   // Structured logger
 }
 
 // NewApplication constructs an Application with all dependencies.
-func NewApplication(mmClient mmpb.MoneyMovementServiceClient, authClient authpb.AuthServiceClient, tracer trace.Tracer, logger *logrus.Logger) *Application {
+func NewApplication(paymentsClient paymentspb.PaymentsServiceClient, authClient authpb.AuthServiceClient, tracer trace.Tracer, logger *logrus.Logger) *Application {
 	return &Application{
-		mmClient:   mmClient,
-		authClient: authClient,
-		tracer:     tracer,
-		logger:     logger,
+		paymentsClient: paymentsClient,
+		authClient:     authClient,
+		tracer:         tracer,
+		logger:         logger,
 	}
 }
 
@@ -267,8 +267,8 @@ func (a *Application) CheckBalance(w http.ResponseWriter, r *http.Request) {
 	span.SetAttributes(attribute.String("email", payload.EmailAddress))
 
 	a.logger.Debugf("checkBalance payload: %+v", payload)
-	// Call money movement service
-	authorizedResponse, err := a.mmClient.CheckBalance(ctx, &mmpb.CheckBalancePayload{
+	// Call payments service
+	authorizedResponse, err := a.paymentsClient.CheckBalance(ctx, &paymentspb.CheckBalancePayload{
 		EmailAddress: payload.EmailAddress,
 	})
 	if err != nil {
@@ -351,15 +351,15 @@ func (a *Application) CustomerPaymentAuthorize(w http.ResponseWriter, r *http.Re
 	)
 
 	a.logger.Debugf("Authorize payload: %+v", payload)
-	// Call money movement service
-	authorizedResponse, err := a.mmClient.Authorize(ctx, &mmpb.AuthorizePayload{
+	// Call payments service
+	authorizedResponse, err := a.paymentsClient.Authorize(ctx, &paymentspb.AuthorizePayload{
 		CustomerEmailAddress: payload.CustomerEmailAddress,
 		MerchantEmailAddress: payload.MerchantEmailAddress,
 		Cents:                payload.Cents,
 		Currency:             payload.Currency,
 	})
 	if err != nil {
-		a.logger.Errorf("Money movement authorization failed: %v", err)
+		a.logger.Errorf("Payment authorization failed: %v", err)
 		_, writeErr := w.Write([]byte(err.Error()))
 		if writeErr != nil {
 			log.Println(writeErr)
@@ -428,11 +428,11 @@ func (a *Application) CustomerPaymentCapture(w http.ResponseWriter, r *http.Requ
 
 	span.SetAttributes(attribute.String("pid", payload.Pid))
 
-	// Call money movement service
+	// Call payments service
 	a.logger.Debugf("Capture payload: %+v", payload)
-	_, err = a.mmClient.Capture(ctx, &mmpb.CapturePayload{Pid: payload.Pid})
+	_, err = a.paymentsClient.Capture(ctx, &paymentspb.CapturePayload{Pid: payload.Pid})
 	if err != nil {
-		a.logger.Errorf("Money movement capture failed: %v", err)
+		a.logger.Errorf("Payment capture failed: %v", err)
 		_, writeErr := w.Write([]byte(err.Error()))
 		if writeErr != nil {
 			log.Println(writeErr)
@@ -484,12 +484,12 @@ func (a *Application) CreateAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate WalletType
-	var walletTypeEnum mmpb.WalletType
+	var walletTypeEnum paymentspb.WalletType
 	switch strings.ToUpper(payload.WalletType) {
 	case "CUSTOMER":
-		walletTypeEnum = mmpb.WalletType_CUSTOMER
+		walletTypeEnum = paymentspb.WalletType_CUSTOMER
 	case "MERCHANT":
-		walletTypeEnum = mmpb.WalletType_MERCHANT
+		walletTypeEnum = paymentspb.WalletType_MERCHANT
 	default:
 		a.logger.Error("Invalid WalletType: ", payload.WalletType)
 		http.Error(w, "wallet_type must be CUSTOMER or MERCHANT", http.StatusBadRequest)
@@ -503,9 +503,9 @@ func (a *Application) CreateAccount(w http.ResponseWriter, r *http.Request) {
 		attribute.String("initial_balance_currency", payload.InitialBalanceCurrency),
 	)
 
-	// Call money movement service
+	// Call payments service
 	a.logger.Debug("Create Account payload: ", payload)
-	_, err = a.mmClient.CreateAccount(ctx, &mmpb.CreateAccountPayload{
+	_, err = a.paymentsClient.CreateAccount(ctx, &paymentspb.CreateAccountPayload{
 		EmailAddress:           payload.EmailAddress,
 		WalletType:             walletTypeEnum,
 		InitialBalanceCents:    payload.InitialBalanceCents,

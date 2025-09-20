@@ -8,7 +8,7 @@ import (
 
 	authpb "github.com/andreistefanciprian/gomicropay/api_gateway/auth/proto"
 	"github.com/andreistefanciprian/gomicropay/api_gateway/internal/tracing"
-	mmpb "github.com/andreistefanciprian/gomicropay/api_gateway/money_movement/proto"
+	paymentspb "github.com/andreistefanciprian/gomicropay/api_gateway/payments/proto"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/otel/propagation"
 	"google.golang.org/grpc"
@@ -32,9 +32,9 @@ func main() {
 	authHost := os.Getenv("AUTH_HOST")
 	authPort := os.Getenv("AUTH_PORT")
 	apiGatewayPort := os.Getenv("API_GATEWAY_PORT")
-	moneyMovementHost := os.Getenv("MONEY_MOVEMENT_HOST")
-	moneyMovementPort := os.Getenv("MONEY_MOVEMENT_PORT")
-	moneyMovementAddress := fmt.Sprintf("%s:%s", moneyMovementHost, moneyMovementPort)
+	paymentsHost := os.Getenv("PAYMENTS_HOST")
+	paymentsPort := os.Getenv("PAYMENTS_PORT")
+	paymentsAddress := fmt.Sprintf("%s:%s", paymentsHost, paymentsPort)
 	authAddress := fmt.Sprintf("%s:%s", authHost, authPort)
 
 	// Initialize auth connection
@@ -62,10 +62,10 @@ func main() {
 	authClient := authpb.NewAuthServiceClient(authConn)
 	logger.Info("Auth gRPC connection established.")
 
-	// Initialize money movement connection
-	logger.Infof("Connecting to Money Movement service at %s", moneyMovementAddress)
-	mmConn, err := grpc.NewClient(
-		moneyMovementAddress,
+	// Initialize payments connection
+	logger.Infof("Connecting to Payments service at %s", paymentsAddress)
+	paymentsConn, err := grpc.NewClient(
+		paymentsAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithStatsHandler(
 			otelgrpc.NewClientHandler(
@@ -77,18 +77,18 @@ func main() {
 		),
 	)
 	if err != nil {
-		logger.Fatalf("Failed to connect to Money Movement service at %s: %v", moneyMovementAddress, err)
+		logger.Fatalf("Failed to connect to Payments service at %s: %v", paymentsAddress, err)
 	}
 	defer func() {
-		if err := mmConn.Close(); err != nil {
-			logger.Fatalf("Failed to close money movement connection:", err)
+		if err := paymentsConn.Close(); err != nil {
+			logger.Fatalf("Failed to close payments connection:", err)
 		}
 	}()
-	logger.Info("Money Movement gRPC connection established.")
-	mmClient := mmpb.NewMoneyMovementServiceClient(mmConn)
+	logger.Info("Payments gRPC connection established.")
+	paymentsClient := paymentspb.NewPaymentsServiceClient(paymentsConn)
 
 	// Initialize application
-	app := NewApplication(mmClient, authClient, tracer, logger)
+	app := NewApplication(paymentsClient, authClient, tracer, logger)
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /register", app.RegisterUser)
 	mux.HandleFunc("POST /login", app.LoginUser)
