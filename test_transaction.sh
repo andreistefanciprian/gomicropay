@@ -3,7 +3,7 @@
 # Generate a unique email address for each test run
 
 # Arrays of possible emails
-CUSTOMER_EMAILS=("customer1@email.com" "customer2@email.com" "customer3@email.com")
+CUSTOMER_EMAILS=("anzxdemo6@gmail.com" "customer2@email.com" "customer3@email.com")
 MERCHANT_EMAILS=("merchant1@email.com" "merchant2@email.com" "merchant3@email.com")
 
 # Pick a random email from each array
@@ -91,11 +91,11 @@ check_databases() {
     echo "========== [DB] auth.registered_users =========="
     docker run -it --network host --rm mysql mysql -h127.0.0.1 -P 33061 -u root -pAdmin123 -e 'select * from auth.registered_users;'
 
-    # Check contents of money_movement tables
+    # Check contents of payments tables
     echo
-    echo "========== [DB] money_movement.wallet, account, transaction =========="
+    echo "========== [DB] payments.wallet, account, transaction =========="
     docker run -it --network host --rm mysql mysql -h127.0.0.1 -P 33062 -u root -pAdmin123 -e \
-        'select * from money_movement.wallet; select * from money_movement.account; select * from money_movement.transaction;'
+        'select * from payments.wallet; select * from payments.account; select * from payments.transaction;'
 
     # Check contents of ledger.ledger table
     echo

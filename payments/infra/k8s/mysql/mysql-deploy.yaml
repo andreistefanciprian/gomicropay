@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-payments
+  labels:
+    app: mysql-payments
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-payments
+  template:
+    metadata:
+      labels:
+        app: mysql-payments
+    spec:
+      containers:
+        - name: mysql-payments
+          image: mysql:9.4@sha256:94254b456a6db9b56c83525a86bff4c7f1e52335f934cbed686fe1ce763116a0
+          envFrom:
+            - secretRef:
+                name: mysql-payments-secret
+            - configMapRef:
+                name: mysql-payments-configmap
+          volumeMounts:
+            - name: init-sql
+              mountPath: /docker-entrypoint-initdb.d
+          securityContext:
+            privileged: true
+          ports:
+            - containerPort: 3306
+      volumes:
+        - name: init-sql
+          configMap:
+            name: mysql-payments-init-sql
+            items:
+              - key: init.sql
+                path: init.sql
