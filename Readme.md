@@ -2,7 +2,7 @@
 
 This repository is a hands-on way to learn about microservice architecture using gRPC and Kafka. It demonstrates service-to-service communication, event-driven workflows, and database integration in a modern distributed system.
 
-![Architecture Overview](microservices_architecture.jpg)
+![Architecture Overview](microservices_architecture.png)
 
 
 ## CI/CD and Dependency Automation
