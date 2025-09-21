@@ -33,8 +33,6 @@ type MySqlDb struct {
 	logger *logrus.Logger
 }
 
-// removed old cfg struct and dsn method
-
 // getConfig retrieves database configuration from environment variables and returns a mysql.Config
 func loadCfgFromEnv() (*mysql.Config, error) {
 	user := os.Getenv("MYSQL_USER")

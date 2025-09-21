@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"os"
 
-	authpb "github.com/andreistefanciprian/gomicropay/api_gateway/auth/proto"
-	"github.com/andreistefanciprian/gomicropay/api_gateway/internal/tracing"
-	paymentspb "github.com/andreistefanciprian/gomicropay/api_gateway/payments/proto"
+	authpb "github.com/andreistefanciprian/gomicropay/api-gateway/auth/proto"
+	"github.com/andreistefanciprian/gomicropay/api-gateway/internal/tracing"
+	paymentspb "github.com/andreistefanciprian/gomicropay/api-gateway/payments/proto"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/otel/propagation"
 	"google.golang.org/grpc"

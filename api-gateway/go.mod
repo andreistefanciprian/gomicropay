@@ -1,4 +1,4 @@
-module github.com/andreistefanciprian/gomicropay/api_gateway
+module github.com/andreistefanciprian/gomicropay/api-gateway
 
 go 1.25.0
 
