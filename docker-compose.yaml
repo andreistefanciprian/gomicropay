@@ -2,7 +2,7 @@ services:
   gateway:
     image: andreistefanciprian/gomicropay-gateway:latest
     build:
-      context: ./api_gateway
+      context: ./api-gateway
       dockerfile: infra/Dockerfile
     ports:
       - "8080:8080"

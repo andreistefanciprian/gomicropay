@@ -10,9 +10,9 @@ import (
 	"strconv"
 	"strings"
 
-	authpb "github.com/andreistefanciprian/gomicropay/api_gateway/auth/proto"
-	"github.com/andreistefanciprian/gomicropay/api_gateway/internal/validator"
-	paymentspb "github.com/andreistefanciprian/gomicropay/api_gateway/payments/proto"
+	authpb "github.com/andreistefanciprian/gomicropay/api-gateway/auth/proto"
+	"github.com/andreistefanciprian/gomicropay/api-gateway/internal/validator"
+	paymentspb "github.com/andreistefanciprian/gomicropay/api-gateway/payments/proto"
 	"github.com/sirupsen/logrus"
 
 	"go.opentelemetry.io/otel/attribute"

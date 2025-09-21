@@ -7,16 +7,16 @@ on:
     branches:
       - 'main'
     paths:
-      - 'api_gateway/go.*'
-      - 'api_gateway/**/*.go'
-      - 'api_gateway/infra/Dockerfile'
+      - 'api-gateway/go.*'
+      - 'api-gateway/**/*.go'
+      - 'api-gateway/infra/Dockerfile'
       - '.github/workflows/docker-api-gateway.yaml'
   pull_request:
     branches: [ 'main' ]
     paths:
-      - 'api_gateway/go.*'
-      - 'api_gateway/**/*.go'
-      - 'api_gateway/infra/Dockerfile'
+      - 'api-gateway/go.*'
+      - 'api-gateway/**/*.go'
+      - 'api-gateway/infra/Dockerfile'
       - '.github/workflows/docker-api-gateway.yaml'
   workflow_dispatch:
   
@@ -50,6 +50,6 @@ jobs:
       image_name: andreistefanciprian/gomicropay-gateway
       image_tag: ${{ needs.generate-build-id.outputs.BUILD_ID }}
       dockerhub_username: andreistefanciprian
-      file: api_gateway/infra/Dockerfile
-      context: ./api_gateway
+      file: api-gateway/infra/Dockerfile
+      context: ./api-gateway
     secrets: inherit
