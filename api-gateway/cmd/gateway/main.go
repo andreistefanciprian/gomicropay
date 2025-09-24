@@ -81,7 +81,7 @@ func main() {
 	}
 	defer func() {
 		if err := paymentsConn.Close(); err != nil {
-			logger.Fatalf("Failed to close payments connection:", err)
+			logger.Fatalf("Failed to close payments connection: %v", err)
 		}
 	}()
 	logger.Info("Payments gRPC connection established.")
