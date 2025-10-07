@@ -5,6 +5,11 @@
   "prConcurrentLimit": 0,
   "branchConcurrentLimit": 0,
   "prHourlyLimit": 0,
+  
+  "automerge": true,
+  "automergeType": "pr",
+  "ignoreTests": false,
+  
   "kubernetes": {
     "managerFilePatterns": [
       "/^api-gateway\\/infra\\/k8s\\/.+\\.ya?ml$/",
@@ -15,6 +20,20 @@
     ]
   },
   "packageRules": [
+    {
+      "description": "Automerge all Go module updates including majors",
+      "matchManagers": ["gomod"],
+      "automerge": true,
+      "automergeType": "pr",
+      "ignoreTests": false
+    },
+    {
+      "description": "Automerge all Docker image updates including majors", 
+      "matchManagers": ["dockerfile", "docker-compose"],
+      "automerge": true,
+      "automergeType": "pr",
+      "ignoreTests": false
+    },
     {
       "description": "Automerge digest-only updates for our k8s image refs",
       "matchManagers": [
@@ -45,6 +64,13 @@
       "automerge": true,
       "automergeType": "pr",
       "ignoreTests": true
+    },
+    {
+      "description": "Automerge all Kubernetes manifest updates including majors",
+      "matchManagers": ["kubernetes"],
+      "automerge": true, 
+      "automergeType": "pr",
+      "ignoreTests": false
     }
   ]
 }
