@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: ledger
-          image: andreistefanciprian/gomicropay-ledger:latest@sha256:7b5daa383dad9940f6c81f7b24768ccb8fa0c6cc837c1bdfa25e68dcdded6204
+          image: andreistefanciprian/gomicropay-ledger:latest@sha256:e9915cbd2a323950de912e1bfb416235406c656d577606f9904bbdb43c38cebf
           imagePullPolicy: Always
           envFrom:
             - secretRef:
