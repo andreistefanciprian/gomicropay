@@ -29,7 +29,8 @@
     },
     {
       "description": "Automerge all Docker image updates including majors", 
-      "matchManagers": ["dockerfile", "docker-compose"],
+      "matchManagers": ["dockerfile", "docker-compose", "kubernetes"],
+      "matchDatasources": ["docker"],
       "automerge": true,
       "automergeType": "pr",
       "ignoreTests": false
