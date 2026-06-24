@@ -115,7 +115,7 @@ services:
         condition: service_healthy
 
   broker:
-    image: apache/kafka:latest@sha256:3f7b939115cd4872e9cee9369d80bd69712fde55f9902f46d793f64848dedc75
+    image: apache/kafka:latest@sha256:77e3df9054047a88b520d0cc46e16696d3b22022e1d580aeccd2632df6532837
     hostname: broker
     container_name: broker
     ports:
