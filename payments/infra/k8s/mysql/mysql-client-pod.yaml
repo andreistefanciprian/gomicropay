@@ -7,5 +7,5 @@ metadata:
 spec:
   containers:
     - name: mysql-client
-      image: mysql:9.5@sha256:569c4128dfa625ac2ac62cdd8af588a3a6a60a049d1a8d8f0fac95880ecdbbe5
+      image: mysql:9.7@sha256:e2bde46db6563855d7177adb5f0b57b9dc663f5a20927a90f4259d3312068497
       command: ["sleep", "infinity"]
