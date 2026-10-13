@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: mysql-auth
-          image: mysql:9.5@sha256:569c4128dfa625ac2ac62cdd8af588a3a6a60a049d1a8d8f0fac95880ecdbbe5
+          image: mysql:9.7@sha256:c7cb87a9822f499375287930cbff71d6d3b201e346b45108b1115b435ee2df13
           envFrom:
             - secretRef:
                 name: mysql-auth-secret
